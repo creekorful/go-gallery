@@ -29,11 +29,13 @@ var (
 	resDirectory embed.FS
 )
 
-// Config represent the program configuration file
-type Config struct {
+// the program configuration file
+type config struct {
 	Title string `yaml:"title"`
+}
 
-	// Photos is not stored on the config file, just passed by at runtime
+type context struct {
+	Config config
 	Photos []map[string]interface{}
 }
 
@@ -56,10 +58,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("error while processing images: %s", err)
 	}
-	config.Photos = photos
 
 	// Generate the index.html
-	if err := generateIndex(config, *outputDirFlag); err != nil {
+	if err := generateIndex(context{Config: config, Photos: photos}, *outputDirFlag); err != nil {
 		log.Fatalf("error while generating index.html: %s", err)
 	}
 
@@ -71,22 +72,22 @@ func main() {
 	log.Printf("successfully generated!")
 }
 
-func readConfig() (Config, error) {
+func readConfig() (config, error) {
 	f, err := os.Open(*configFileFlag)
 	if err != nil {
-		return Config{}, err
+		return config{}, err
 	}
 	defer f.Close()
 
-	var config Config
-	if err := yaml.NewDecoder(f).Decode(&config); err != nil {
-		return Config{}, err
+	var c config
+	if err := yaml.NewDecoder(f).Decode(&c); err != nil {
+		return config{}, err
 	}
 
-	return config, nil
+	return c, nil
 }
 
-func generateIndex(config Config, distDirectory string) error {
+func generateIndex(ctx context, distDirectory string) error {
 	t, err := template.New("index.gohtml").ParseFS(resDirectory, "res/index.gohtml")
 	if err != nil {
 		return err
@@ -98,7 +99,7 @@ func generateIndex(config Config, distDirectory string) error {
 	}
 	defer f.Close()
 
-	if err := t.ExecuteTemplate(f, "index.gohtml", config); err != nil {
+	if err := t.ExecuteTemplate(f, "index.gohtml", ctx); err != nil {
 		return err
 	}
 
