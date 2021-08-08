@@ -1,11 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"embed"
 	_ "embed"
 	"flag"
+	"github.com/nfnt/resize"
 	"gopkg.in/yaml.v2"
 	"html/template"
+	"image/jpeg"
 	"io/fs"
 	"io/ioutil"
 	"log"
@@ -122,21 +125,39 @@ func processImages(photosDir, outputDir string) ([]map[string]interface{}, error
 
 		log.Printf("processing %s", path)
 
-		imgBytes, err := os.ReadFile(path)
-		if err != nil {
-			return err
-		}
+		_, err = os.Stat(filepath.Join(outputDir, "photos", info.Name()))
+		if os.IsNotExist(err) {
+			imgBytes, err := os.ReadFile(path)
+			if err != nil {
+				return err
+			}
 
-		// TODO generate thumbnails
+			// Generate thumbnail
+			img, err := jpeg.Decode(bytes.NewReader(imgBytes))
+			if err != nil {
+				return err
+			}
+			thumbFile, err := os.Create(filepath.Join(outputDir, "photos", "thumbnails", info.Name()))
+			if err != nil {
+				return err
+			}
+			img = resize.Resize(640, 0, img, resize.Lanczos3)
+			if err := jpeg.Encode(thumbFile, img, nil); err != nil {
+				return err
+			}
 
-		// Copy the image
-		if err := ioutil.WriteFile(filepath.Join(outputDir, "photos", info.Name()), imgBytes, 0640); err != nil {
-			return err
+			// Copy the image
+			if err := ioutil.WriteFile(filepath.Join(outputDir, "photos", info.Name()), imgBytes, 0640); err != nil {
+				return err
+			}
+		} else {
+			log.Printf("skipping existing file: %s", info.Name())
 		}
 
 		photos = append(photos, map[string]interface{}{
-			"Title":   info.Name(),
-			"ImgPath": filepath.Join("photos", info.Name()),
+			"Title":         info.Name(),
+			"ImgPath":       filepath.Join("photos", info.Name()),
+			"ThumbnailPath": filepath.Join("photos", "thumbnails", info.Name()),
 		})
 
 		return nil
