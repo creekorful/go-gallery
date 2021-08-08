@@ -17,8 +17,8 @@ import (
 )
 
 var (
-	// Version is the program version, exported using LDFLAGS
-	Version = "dev"
+	// the program version, exported using LDFLAGS
+	version = "dev"
 
 	photosDirFlag  = flag.String("photos-dir", "photos", "")
 	outputDirFlag  = flag.String("output-dir", "dist", "")
@@ -39,7 +39,7 @@ type Config struct {
 func main() {
 	flag.Parse()
 
-	log.Printf("running go-gallery %s", Version)
+	log.Printf("running go-gallery %s", version)
 
 	config, err := readConfig()
 	if err != nil {
