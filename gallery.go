@@ -17,6 +17,7 @@ import (
 )
 
 var (
+	// Version is the program version, exported using LDFLAGS
 	Version = "dev"
 
 	photosDirFlag  = flag.String("photos-dir", "photos", "")
@@ -27,9 +28,11 @@ var (
 	resDirectory embed.FS
 )
 
+// Config represent the program configuration file
 type Config struct {
 	Title string `yaml:"title"`
 
+	// Photos is not stored on the config file, just passed by at runtime
 	Photos []map[string]interface{}
 }
 
@@ -60,7 +63,7 @@ func main() {
 	}
 
 	// Copy the index.css
-	if err := copyCssStyle(*outputDirFlag); err != nil {
+	if err := copyCSSStyle(*outputDirFlag); err != nil {
 		log.Fatalf("error while copying index.css: %s", err)
 	}
 }
@@ -99,7 +102,7 @@ func generateIndex(config Config, distDirectory string) error {
 	return nil
 }
 
-func copyCssStyle(distDirectory string) error {
+func copyCSSStyle(distDirectory string) error {
 	style, err := resDirectory.ReadFile("res/index.css")
 	if err != nil {
 		return err
