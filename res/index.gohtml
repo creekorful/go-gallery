@@ -13,7 +13,7 @@
 <body>
 <section id="photos">
     {{ range .Photos }}
-        <img src="{{ .ThumbnailPath }}" title="{{ .Title }}">
+        <img src="{{ .ThumbnailPath }}" title="{{ .Title }}" onclick="window.open('{{ .ImgPath }}', '_blank')">
     {{ end }}
 </section>
 </body>
