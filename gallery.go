@@ -14,6 +14,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sort"
 )
 
 var (
@@ -66,6 +67,8 @@ func main() {
 	if err := copyCSSStyle(*outputDirFlag); err != nil {
 		log.Fatalf("error while copying index.css: %s", err)
 	}
+
+	log.Printf("successfully generated!")
 }
 
 func readConfig() (Config, error) {
@@ -167,6 +170,12 @@ func processImages(photosDir, outputDir string) ([]map[string]interface{}, error
 	}); err != nil {
 		return nil, err
 	}
+
+	// sort the photos by filename
+	// TODO: should sort by photo taken date if information is available
+	sort.SliceStable(photos, func(i, j int) bool {
+		return photos[i]["Title"].(string) > photos[j]["Title"].(string)
+	})
 
 	return photos, nil
 }
