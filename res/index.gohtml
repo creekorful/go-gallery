@@ -13,7 +13,7 @@
 <body>
 <section id="photos">
     {{ range .Photos }}
-        <img src="{{ .ImgPath }}">
+        <img src="{{ .ImgPath }}" title="{{ .Title }}">
     {{ end }}
 </section>
 </body>

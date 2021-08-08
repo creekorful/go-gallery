@@ -135,6 +135,7 @@ func processImages(photosDir, outputDir string) ([]map[string]interface{}, error
 		}
 
 		photos = append(photos, map[string]interface{}{
+			"Title":   info.Name(),
 			"ImgPath": filepath.Join("photos", info.Name()),
 		})
 
