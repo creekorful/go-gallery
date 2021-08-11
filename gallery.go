@@ -6,6 +6,7 @@ import (
 	_ "embed"
 	"flag"
 	"github.com/nfnt/resize"
+	"github.com/rwcarlsen/goexif/exif"
 	"gopkg.in/yaml.v2"
 	"html/template"
 	"image/jpeg"
@@ -15,6 +16,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"time"
 )
 
 var (
@@ -132,13 +134,15 @@ func processImages(photosDir, outputDir string) ([]map[string]interface{}, error
 
 		log.Printf("processing %s", path)
 
+		// Read the image
+		imgBytes, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+
+		// Determinate if the image is not already processed (i.e copied to dist/ and thumbnail generated)
 		_, err = os.Stat(filepath.Join(outputDir, "photos", info.Name()))
 		if os.IsNotExist(err) {
-			imgBytes, err := os.ReadFile(path)
-			if err != nil {
-				return err
-			}
-
 			// Generate thumbnail
 			img, err := jpeg.Decode(bytes.NewReader(imgBytes))
 			if err != nil {
@@ -161,21 +165,49 @@ func processImages(photosDir, outputDir string) ([]map[string]interface{}, error
 			log.Printf("skipping existing file: %s", info.Name())
 		}
 
-		photos = append(photos, map[string]interface{}{
+		photo := map[string]interface{}{
 			"Title":         info.Name(),
 			"ImgPath":       filepath.Join("photos", info.Name()),
 			"ThumbnailPath": filepath.Join("photos", "thumbnails", info.Name()),
-		})
+		}
+
+		// Try to parse image EXIF data to get the shooting date
+		if x, err := exif.Decode(bytes.NewReader(imgBytes)); err == nil {
+			if tag, err := x.Get(exif.DateTimeOriginal); err == nil {
+				if dateTimeStr, err := tag.StringVal(); err == nil {
+					if dateTime, err := time.Parse("2006:01:02 15:04:05", dateTimeStr); err == nil {
+						photo["ShootingDate"] = dateTime
+					}
+				}
+			}
+		}
+
+		photos = append(photos, photo)
 
 		return nil
 	}); err != nil {
 		return nil, err
 	}
 
-	// sort the photos by filename
-	// TODO: should sort by photo taken date if information is available
-	sort.SliceStable(photos, func(i, j int) bool {
-		return photos[i]["Title"].(string) > photos[j]["Title"].(string)
+	// sort the photos by shooting date if available
+	// otherwise fallback to filename
+	sort.SliceStable(photos, func(left, right int) bool {
+		leftDateTime := time.Time{}
+		if val, exists := photos[left]["ShootingDate"]; exists {
+			leftDateTime = val.(time.Time)
+		}
+
+		rightDateTime := time.Time{}
+		if val, exists := photos[right]["ShootingDate"]; exists {
+			rightDateTime = val.(time.Time)
+		}
+
+		if !leftDateTime.IsZero() && !rightDateTime.IsZero() {
+			return leftDateTime.After(rightDateTime)
+		}
+
+		// otherwise, fallback to filename comparison
+		return photos[left]["Title"].(string) > photos[right]["Title"].(string)
 	})
 
 	return photos, nil
