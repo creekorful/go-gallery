@@ -16,16 +16,14 @@
 
     <script type="text/javascript">
         document.addEventListener('DOMContentLoaded', function (event) {
-            const lightbox = GLightbox({
-                selector: '.glightbox',
-            });
+            const lightbox = GLightbox();
         });
     </script>
 </head>
 <body>
 <section id="photos">
     {{ range .Photos }}
-        <a href="{{ .ImgPath }}" class="glightbox" data-title="{{ .Title }}">
+        <a href="{{ .ImgPath }}" class="glightbox">
             <img src="{{ .ThumbnailPath }}"/>
         </a>
     {{ end }}
