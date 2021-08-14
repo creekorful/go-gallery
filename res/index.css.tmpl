@@ -9,36 +9,40 @@
     flex-direction: row;
 }
 
-#photos img {
+#photos a {
     width: 20%;
 
     outline: {{ .Config.Border }} solid {{ .Config.BgColor }};
 }
 
-#photos img:hover {
+#photos img {
+    width: 100%
+}
+
+#photos a:hover {
     cursor: pointer;
 }
 
 @media (max-width: 1400px) {
-    #photos img {
+    #photos a {
         width: 25%;
     }
 }
 
 @media (max-width: 1000px) {
-    #photos img {
+    #photos a {
         width: 33.33%;
     }
 }
 
 @media (max-width: 800px) {
-    #photos img {
+    #photos a {
         width: 50%;
     }
 }
 
 @media (max-width: 600px) {
-    #photos img {
+    #photos a {
         width: 100%;
     }
 }

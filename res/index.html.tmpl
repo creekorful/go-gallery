@@ -9,11 +9,25 @@
     <title>{{ .Config.Title }}</title>
 
     <link rel="stylesheet" type="text/css" href="index.css">
+
+    <!-- GLightbox -->
+    <link rel="stylesheet" href="glightbox.min.css"/>
+    <script src="glightbox.min.js"></script>
+
+    <script type="text/javascript">
+        document.addEventListener('DOMContentLoaded', function (event) {
+            const lightbox = GLightbox({
+                selector: '.glightbox',
+            });
+        });
+    </script>
 </head>
 <body>
 <section id="photos">
     {{ range .Photos }}
-        <img src="{{ .ThumbnailPath }}" title="{{ .Title }}" onclick="window.open('{{ .ImgPath }}', '_blank')">
+        <a href="{{ .ImgPath }}" class="glightbox" data-title="{{ .Title }}">
+            <img src="{{ .ThumbnailPath }}"/>
+        </a>
     {{ end }}
 </section>
 </body>

@@ -75,6 +75,22 @@ func main() {
 		log.Fatalf("error while generating index.css: %s", err)
 	}
 
+	// Copy the third party files
+	files, err := resDirectory.ReadDir(filepath.Join("res", "vendor"))
+	if err != nil {
+		log.Fatalf("error while processing res/vendor: %s", err)
+	}
+
+	for _, file := range files {
+		content, err := resDirectory.ReadFile(filepath.Join("res", "vendor", file.Name()))
+		if err != nil {
+			continue
+		}
+		if err := ioutil.WriteFile(filepath.Join(*outputDirFlag, file.Name()), content, 0640); err != nil {
+			continue
+		}
+	}
+
 	log.Printf("successfully generated!")
 }
 
