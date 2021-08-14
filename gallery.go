@@ -33,7 +33,9 @@ var (
 
 // the program configuration file
 type config struct {
-	Title string `yaml:"title"`
+	Title   string `yaml:"title"`
+	BgColor string `yaml:"bg_color"`
+	Border  string `yaml:"border"`
 }
 
 type context struct {
@@ -61,14 +63,16 @@ func main() {
 		log.Fatalf("error while processing images: %s", err)
 	}
 
+	ctx := context{Config: config, Photos: photos}
+
 	// Generate the index.html
-	if err := generateIndex(context{Config: config, Photos: photos}, *outputDirFlag); err != nil {
+	if err := generateIndex(ctx, *outputDirFlag); err != nil {
 		log.Fatalf("error while generating index.html: %s", err)
 	}
 
-	// Copy the index.css
-	if err := copyCSSStyle(*outputDirFlag); err != nil {
-		log.Fatalf("error while copying index.css: %s", err)
+	// Generate the index.css
+	if err := generateStylesheet(ctx, *outputDirFlag); err != nil {
+		log.Fatalf("error while generating index.css: %s", err)
 	}
 
 	log.Printf("successfully generated!")
@@ -90,7 +94,7 @@ func readConfig() (config, error) {
 }
 
 func generateIndex(ctx context, distDirectory string) error {
-	t, err := template.New("index.gohtml").ParseFS(resDirectory, "res/index.gohtml")
+	t, err := template.New("index.html.tmpl").ParseFS(resDirectory, "res/index.html.tmpl")
 	if err != nil {
 		return err
 	}
@@ -101,19 +105,26 @@ func generateIndex(ctx context, distDirectory string) error {
 	}
 	defer f.Close()
 
-	if err := t.ExecuteTemplate(f, "index.gohtml", ctx); err != nil {
+	if err := t.ExecuteTemplate(f, "index.html.tmpl", ctx); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func copyCSSStyle(distDirectory string) error {
-	style, err := resDirectory.ReadFile("res/index.css")
+func generateStylesheet(ctx context, distDirectory string) error {
+	t, err := template.New("index.css.tmpl").ParseFS(resDirectory, "res/index.css.tmpl")
 	if err != nil {
 		return err
 	}
-	if err := ioutil.WriteFile(filepath.Join(distDirectory, "index.css"), style, 0640); err != nil {
+
+	f, err := os.OpenFile(filepath.Join(distDirectory, "index.css"), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0640)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	if err := t.ExecuteTemplate(f, "index.css.tmpl", ctx); err != nil {
 		return err
 	}
 

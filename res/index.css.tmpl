@@ -1,5 +1,6 @@
 * {
     margin: 0;
+    background: {{ .Config.BgColor }};
 }
 
 #photos {
@@ -11,7 +12,7 @@
 #photos img {
     width: 20%;
 
-    outline: 2px solid #000;
+    outline: {{ .Config.Border }} solid {{ .Config.BgColor }};
 }
 
 #photos img:hover {
