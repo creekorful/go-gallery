@@ -82,16 +82,18 @@ func main() {
 	}
 
 	for _, file := range files {
-		content, err := resDirectory.ReadFile(filepath.Join("res", "vendor", file.Name()))
+		fp := filepath.Join("res", "vendor", file.Name())
+
+		content, err := resDirectory.ReadFile(fp)
 		if err != nil {
-			continue
+			log.Fatalf("error while copying 3rd party file %s: %s", fp, err)
 		}
 		if err := ioutil.WriteFile(filepath.Join(*outputDirFlag, file.Name()), content, 0640); err != nil {
-			continue
+			log.Fatalf("error while copying 3rd party file %s: %s", fp, err)
 		}
 	}
 
-	log.Printf("successfully generated!")
+	log.Printf("successfully generated! (%d photos)", len(photos))
 }
 
 func readConfig() (config, error) {
@@ -159,8 +161,6 @@ func processImages(photosDir, outputDir string) ([]map[string]interface{}, error
 			return nil
 		}
 
-		log.Printf("processing %s", path)
-
 		// Read the image
 		imgBytes, err := os.ReadFile(path)
 		if err != nil {
@@ -170,6 +170,8 @@ func processImages(photosDir, outputDir string) ([]map[string]interface{}, error
 		// Determinate if the image is not already processed (i.e copied to dist/ and thumbnail generated)
 		_, err = os.Stat(filepath.Join(outputDir, "photos", info.Name()))
 		if os.IsNotExist(err) {
+			log.Printf("processing: %s", path)
+
 			// Generate thumbnail
 			img, err := jpeg.Decode(bytes.NewReader(imgBytes))
 			if err != nil {
