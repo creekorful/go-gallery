@@ -23,8 +23,8 @@ var (
 	// the program version, exported using LDFLAGS
 	version = "dev"
 
-	photosDirFlag  = flag.String("photos-dir", "photos", "")
-	outputDirFlag  = flag.String("output-dir", "dist", "")
+	photosDirFlag  = flag.String("photos-dir", "", "")
+	distDirFlag    = flag.String("output-dir", "dist", "")
 	configFileFlag = flag.String("config-file", "config.yaml", "")
 
 	//go:embed res/*
@@ -48,17 +48,28 @@ func main() {
 
 	log.Printf("running go-gallery %s", version)
 
+	// Validate parameters
+	if *photosDirFlag == "" {
+		log.Fatalf("missing required parameter --photos-dir")
+	}
+
+	// Make sure photosDir exists
+	_, err := os.Stat(*photosDirFlag)
+	if os.IsNotExist(err) {
+		log.Fatalf("directory %s does not exist", *photosDirFlag)
+	}
+
 	config, err := readConfig()
 	if err != nil {
 		log.Fatalf("error while reading config: %s", err)
 	}
 
 	// Create dist folder
-	if err := os.Mkdir(*outputDirFlag, 0750); err != nil && !os.IsExist(err) {
-		log.Fatalf("error while creating %s/ folder: %s", *outputDirFlag, err)
+	if err := os.Mkdir(*distDirFlag, 0750); err != nil && !os.IsExist(err) {
+		log.Fatalf("error while creating %s/ folder: %s", *distDirFlag, err)
 	}
 
-	photos, err := processImages(*photosDirFlag, *outputDirFlag)
+	photos, err := processImages(*photosDirFlag, *distDirFlag)
 	if err != nil {
 		log.Fatalf("error while processing images: %s", err)
 	}
@@ -66,12 +77,12 @@ func main() {
 	ctx := context{Config: config, Photos: photos}
 
 	// Generate the index.html
-	if err := generateIndex(ctx, *outputDirFlag); err != nil {
+	if err := generateIndex(ctx, *distDirFlag); err != nil {
 		log.Fatalf("error while generating index.html: %s", err)
 	}
 
 	// Generate the index.css
-	if err := generateStylesheet(ctx, *outputDirFlag); err != nil {
+	if err := generateStylesheet(ctx, *distDirFlag); err != nil {
 		log.Fatalf("error while generating index.css: %s", err)
 	}
 
@@ -88,7 +99,7 @@ func main() {
 		if err != nil {
 			log.Fatalf("error while copying 3rd party file %s: %s", fp, err)
 		}
-		if err := ioutil.WriteFile(filepath.Join(*outputDirFlag, file.Name()), content, 0640); err != nil {
+		if err := ioutil.WriteFile(filepath.Join(*distDirFlag, file.Name()), content, 0640); err != nil {
 			log.Fatalf("error while copying 3rd party file %s: %s", fp, err)
 		}
 	}
@@ -167,7 +178,7 @@ func processImages(photosDir, outputDir string) ([]map[string]interface{}, error
 			return err
 		}
 
-		// Determinate if the image is not already processed (i.e copied to dist/ and thumbnail generated)
+		// Determinate if the image is not already processed (i.e. copied to dist/ and thumbnail generated)
 		_, err = os.Stat(filepath.Join(outputDir, "photos", info.Name()))
 		if os.IsNotExist(err) {
 			log.Printf("processing: %s", path)
