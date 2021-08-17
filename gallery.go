@@ -172,23 +172,25 @@ func processImages(photosDir, outputDir string) ([]map[string]interface{}, error
 			return nil
 		}
 
-		// Read the image
-		imgBytes, err := os.ReadFile(path)
+		// Read the photo
+		photoBytes, err := os.ReadFile(path)
 		if err != nil {
 			return err
 		}
 
-		// Determinate if the image is not already processed (i.e. copied to dist/ and thumbnail generated)
-		_, err = os.Stat(filepath.Join(outputDir, "photos", info.Name()))
-		if os.IsNotExist(err) {
-			log.Printf("processing: %s", path)
+		// Determinate if the image is not already processed
+		photoTargetPath := filepath.Join(outputDir, "photos", info.Name())
+		if !isPhotoProcessed(photoBytes, photoTargetPath) {
+			log.Printf("processing %s", path)
+
+			thumbnailTargetPath := filepath.Join(outputDir, "photos", "thumbnails", info.Name())
 
 			// Generate thumbnail
-			img, err := jpeg.Decode(bytes.NewReader(imgBytes))
+			img, err := jpeg.Decode(bytes.NewReader(photoBytes))
 			if err != nil {
 				return err
 			}
-			thumbFile, err := os.Create(filepath.Join(outputDir, "photos", "thumbnails", info.Name()))
+			thumbFile, err := os.Create(thumbnailTargetPath)
 			if err != nil {
 				return err
 			}
@@ -198,11 +200,11 @@ func processImages(photosDir, outputDir string) ([]map[string]interface{}, error
 			}
 
 			// Copy the image
-			if err := ioutil.WriteFile(filepath.Join(outputDir, "photos", info.Name()), imgBytes, 0640); err != nil {
+			if err := ioutil.WriteFile(photoTargetPath, photoBytes, 0640); err != nil {
 				return err
 			}
 		} else {
-			log.Printf("skipping existing file: %s", info.Name())
+			log.Printf("skipping existing file %s", info.Name())
 		}
 
 		photo := map[string]interface{}{
@@ -212,7 +214,7 @@ func processImages(photosDir, outputDir string) ([]map[string]interface{}, error
 		}
 
 		// Try to parse image EXIF data to get the shooting date
-		if x, err := exif.Decode(bytes.NewReader(imgBytes)); err == nil {
+		if x, err := exif.Decode(bytes.NewReader(photoBytes)); err == nil {
 			if tag, err := x.Get(exif.DateTimeOriginal); err == nil {
 				if dateTimeStr, err := tag.StringVal(); err == nil {
 					if dateTime, err := time.Parse("2006:01:02 15:04:05", dateTimeStr); err == nil {
@@ -251,4 +253,19 @@ func processImages(photosDir, outputDir string) ([]map[string]interface{}, error
 	})
 
 	return photos, nil
+}
+
+func isPhotoProcessed(photoBytes []byte, targetPath string) bool {
+	_, err := os.Stat(targetPath)
+	if os.IsNotExist(err) {
+		return false
+	}
+
+	// Photo already exists, read it and compare byte-by-byte to determinate if file has changed
+	targetPhotoBytes, err := os.ReadFile(targetPath)
+	if err != nil {
+		// todo
+	}
+
+	return bytes.Equal(photoBytes, targetPhotoBytes)
 }
