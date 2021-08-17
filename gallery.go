@@ -16,6 +16,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -168,7 +169,7 @@ func processImages(photosDir, outputDir string) ([]map[string]interface{}, error
 	var photos []map[string]interface{}
 
 	if err := filepath.Walk(photosDir, func(path string, info fs.FileInfo, err error) error {
-		if info.IsDir() {
+		if !isJpegFile(info) {
 			return nil
 		}
 
@@ -268,4 +269,8 @@ func isPhotoProcessed(photoBytes []byte, targetPath string) bool {
 	}
 
 	return bytes.Equal(photoBytes, targetPhotoBytes)
+}
+
+func isJpegFile(file fs.FileInfo) bool {
+	return !file.IsDir() && (strings.HasSuffix(file.Name(), ".jpg") || strings.HasSuffix(file.Name(), ".jpeg"))
 }
