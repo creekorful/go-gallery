@@ -39,9 +39,10 @@ var (
 
 // the program configuration file
 type config struct {
-	Title   string `yaml:"title"`
-	BgColor string `yaml:"bg_color"`
-	Border  string `yaml:"border"`
+	Title            string `yaml:"title"`
+	BgColor          string `yaml:"bg_color"`
+	Border           string `yaml:"border"`
+	ThumbnailMaxSize uint   `yaml:"thumbnail_max_size"`
 }
 
 type context struct {
@@ -75,7 +76,7 @@ func main() {
 		log.Fatalf("error while creating %s/ folder: %s", *distDirFlag, err)
 	}
 
-	photos, err := processPhotos(*photosDirFlag, *distDirFlag)
+	photos, err := processPhotos(*photosDirFlag, *distDirFlag, config.ThumbnailMaxSize)
 	if err != nil {
 		log.Fatalf("error while processing photos: %s", err)
 	}
@@ -150,7 +151,7 @@ func executeTemplate(ctx context, distDirectory, templateName string) error {
 	return nil
 }
 
-func processPhotos(photosDir, distDirectory string) ([]map[string]interface{}, error) {
+func processPhotos(photosDir, distDirectory string, thumbnailMaxSize uint) ([]map[string]interface{}, error) {
 	if err := os.MkdirAll(filepath.Join(distDirectory, "photos", "thumbnails"), dirPerm); err != nil {
 		return nil, err
 	}
@@ -188,7 +189,8 @@ func processPhotos(photosDir, distDirectory string) ([]map[string]interface{}, e
 				if err != nil {
 					return err
 				}
-				photo = resize.Resize(640, 0, photo, resize.MitchellNetravali)
+
+				photo = resize.Thumbnail(thumbnailMaxSize, thumbnailMaxSize, photo, resize.MitchellNetravali)
 				if err := jpeg.Encode(thumbFile, photo, nil); err != nil {
 					return err
 				}
