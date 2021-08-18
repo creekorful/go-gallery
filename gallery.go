@@ -97,13 +97,13 @@ func main() {
 		target := filepath.Join("res", "vendor", file.Name())
 		dest := filepath.Join(*distDirFlag, file.Name())
 
-		if err := copyFile(target, dest); err != nil {
+		if err := copyResFile(target, dest); err != nil {
 			log.Fatalf("error while copying 3rd party file %s: %s", target, err)
 		}
 	}
 
 	// Copy the favicon
-	if err := copyFile(filepath.Join("res", "favicon.png"), filepath.Join(*distDirFlag, "favicon.png")); err != nil {
+	if err := copyResFile(filepath.Join("res", "favicon.png"), filepath.Join(*distDirFlag, "favicon.png")); err != nil {
 		log.Fatalf("error while copying favicon: %s", err)
 	}
 
@@ -277,7 +277,7 @@ func isJpegFile(file fs.FileInfo) bool {
 	return !file.IsDir() && (strings.HasSuffix(file.Name(), ".jpg") || strings.HasSuffix(file.Name(), ".jpeg"))
 }
 
-func copyFile(target, dest string) error {
+func copyResFile(target, dest string) error {
 	content, err := resDirectory.ReadFile(target)
 	if err != nil {
 		return err
