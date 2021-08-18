@@ -32,6 +32,9 @@ var (
 
 	//go:embed res/*
 	resDirectory embed.FS
+
+	filePerm = os.FileMode(0640)
+	dirPerm  = os.FileMode(0750)
 )
 
 // the program configuration file
@@ -68,7 +71,7 @@ func main() {
 	}
 
 	// Create dist folder
-	if err := os.MkdirAll(*distDirFlag, 0750); err != nil {
+	if err := os.MkdirAll(*distDirFlag, dirPerm); err != nil {
 		log.Fatalf("error while creating %s/ folder: %s", *distDirFlag, err)
 	}
 
@@ -133,7 +136,7 @@ func generateIndex(ctx context, distDirectory string) error {
 		return err
 	}
 
-	f, err := os.OpenFile(filepath.Join(distDirectory, "index.html"), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0640)
+	f, err := os.OpenFile(filepath.Join(distDirectory, "index.html"), os.O_RDWR|os.O_CREATE|os.O_TRUNC, filePerm)
 	if err != nil {
 		return err
 	}
@@ -152,7 +155,7 @@ func generateStylesheet(ctx context, distDirectory string) error {
 		return err
 	}
 
-	f, err := os.OpenFile(filepath.Join(distDirectory, "index.css"), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0640)
+	f, err := os.OpenFile(filepath.Join(distDirectory, "index.css"), os.O_RDWR|os.O_CREATE|os.O_TRUNC, filePerm)
 	if err != nil {
 		return err
 	}
@@ -166,7 +169,7 @@ func generateStylesheet(ctx context, distDirectory string) error {
 }
 
 func processPhotos(photosDir, distDirectory string) ([]map[string]interface{}, error) {
-	if err := os.MkdirAll(filepath.Join(distDirectory, "photos", "thumbnails"), 0750); err != nil {
+	if err := os.MkdirAll(filepath.Join(distDirectory, "photos", "thumbnails"), dirPerm); err != nil {
 		return nil, err
 	}
 
@@ -209,7 +212,7 @@ func processPhotos(photosDir, distDirectory string) ([]map[string]interface{}, e
 				}
 
 				// Copy the photo
-				if err := ioutil.WriteFile(photoTargetPath, photoBytes, 0640); err != nil {
+				if err := ioutil.WriteFile(photoTargetPath, photoBytes, filePerm); err != nil {
 					return err
 				}
 			} else {
@@ -294,5 +297,5 @@ func copyResFile(target, dest string) error {
 		return err
 	}
 
-	return ioutil.WriteFile(dest, content, 0640)
+	return ioutil.WriteFile(dest, content, filePerm)
 }
