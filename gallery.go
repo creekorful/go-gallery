@@ -94,15 +94,17 @@ func main() {
 	}
 
 	for _, file := range files {
-		fp := filepath.Join("res", "vendor", file.Name())
+		target := filepath.Join("res", "vendor", file.Name())
+		dest := filepath.Join(*distDirFlag, file.Name())
 
-		content, err := resDirectory.ReadFile(fp)
-		if err != nil {
-			log.Fatalf("error while copying 3rd party file %s: %s", fp, err)
+		if err := copyFile(target, dest); err != nil {
+			log.Fatalf("error while copying 3rd party file %s: %s", target, err)
 		}
-		if err := ioutil.WriteFile(filepath.Join(*distDirFlag, file.Name()), content, 0640); err != nil {
-			log.Fatalf("error while copying 3rd party file %s: %s", fp, err)
-		}
+	}
+
+	// Copy the favicon
+	if err := copyFile(filepath.Join("res", "favicon.png"), filepath.Join(*distDirFlag, "favicon.png")); err != nil {
+		log.Fatalf("error while copying favicon: %s", err)
 	}
 
 	log.Printf("successfully generated! (%d photos)", len(photos))
@@ -273,4 +275,13 @@ func isPhotoProcessed(photoBytes []byte, targetPath string) bool {
 
 func isJpegFile(file fs.FileInfo) bool {
 	return !file.IsDir() && (strings.HasSuffix(file.Name(), ".jpg") || strings.HasSuffix(file.Name(), ".jpeg"))
+}
+
+func copyFile(target, dest string) error {
+	content, err := resDirectory.ReadFile(target)
+	if err != nil {
+		return err
+	}
+
+	return ioutil.WriteFile(dest, content, 0640)
 }
