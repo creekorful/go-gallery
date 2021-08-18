@@ -25,7 +25,7 @@
 <body>
 <section id="photos">
     {{ range .Photos }}
-        <a href="{{ .ImgPath }}" class="glightbox">
+        <a href="{{ .PhotoPath }}" class="glightbox">
             <img src="{{ .ThumbnailPath }}"/>
         </a>
     {{ end }}

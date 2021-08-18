@@ -70,9 +70,9 @@ func main() {
 		log.Fatalf("error while creating %s/ folder: %s", *distDirFlag, err)
 	}
 
-	photos, err := processImages(*photosDirFlag, *distDirFlag)
+	photos, err := processPhotos(*photosDirFlag, *distDirFlag)
 	if err != nil {
-		log.Fatalf("error while processing images: %s", err)
+		log.Fatalf("error while processing photos: %s", err)
 	}
 
 	ctx := context{Config: config, Photos: photos}
@@ -163,7 +163,7 @@ func generateStylesheet(ctx context, distDirectory string) error {
 	return nil
 }
 
-func processImages(photosDir, outputDir string) ([]map[string]interface{}, error) {
+func processPhotos(photosDir, outputDir string) ([]map[string]interface{}, error) {
 	if err := os.MkdirAll(filepath.Join(outputDir, "photos", "thumbnails"), 0750); err != nil {
 		return nil, err
 	}
@@ -181,7 +181,7 @@ func processImages(photosDir, outputDir string) ([]map[string]interface{}, error
 			return err
 		}
 
-		// Determinate if the image is not already processed
+		// Determinate if the photo is not already processed
 		photoTargetPath := filepath.Join(outputDir, "photos", info.Name())
 		if !isPhotoProcessed(photoBytes, photoTargetPath) {
 			log.Printf("processing %s", path)
@@ -189,7 +189,7 @@ func processImages(photosDir, outputDir string) ([]map[string]interface{}, error
 			thumbnailTargetPath := filepath.Join(outputDir, "photos", "thumbnails", info.Name())
 
 			// Generate thumbnail
-			img, err := jpeg.Decode(bytes.NewReader(photoBytes))
+			photo, err := jpeg.Decode(bytes.NewReader(photoBytes))
 			if err != nil {
 				return err
 			}
@@ -197,26 +197,26 @@ func processImages(photosDir, outputDir string) ([]map[string]interface{}, error
 			if err != nil {
 				return err
 			}
-			img = resize.Resize(640, 0, img, resize.Lanczos3)
-			if err := jpeg.Encode(thumbFile, img, nil); err != nil {
+			photo = resize.Resize(640, 0, photo, resize.Lanczos3)
+			if err := jpeg.Encode(thumbFile, photo, nil); err != nil {
 				return err
 			}
 
-			// Copy the image
+			// Copy the photo
 			if err := ioutil.WriteFile(photoTargetPath, photoBytes, 0640); err != nil {
 				return err
 			}
 		} else {
-			log.Printf("skipping existing file %s", info.Name())
+			log.Printf("skipping existing photo %s", info.Name())
 		}
 
 		photo := map[string]interface{}{
 			"Title":         info.Name(),
-			"ImgPath":       filepath.Join("photos", info.Name()),
+			"PhotoPath":     filepath.Join("photos", info.Name()),
 			"ThumbnailPath": filepath.Join("photos", "thumbnails", info.Name()),
 		}
 
-		// Try to parse image EXIF data to get the shooting date
+		// Try to parse photo EXIF data to get the shooting date
 		if x, err := exif.Decode(bytes.NewReader(photoBytes)); err == nil {
 			if tag, err := x.Get(exif.DateTimeOriginal); err == nil {
 				if dateTimeStr, err := tag.StringVal(); err == nil {
