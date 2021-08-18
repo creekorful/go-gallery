@@ -62,13 +62,13 @@ func main() {
 		log.Fatalf("directory %s does not exist", *photosDirFlag)
 	}
 
-	config, err := readConfig()
+	config, err := readConfig(*configFileFlag)
 	if err != nil {
 		log.Fatalf("error while reading config: %s", err)
 	}
 
 	// Create dist folder
-	if err := os.Mkdir(*distDirFlag, 0750); err != nil && !os.IsExist(err) {
+	if err := os.MkdirAll(*distDirFlag, 0750); err != nil {
 		log.Fatalf("error while creating %s/ folder: %s", *distDirFlag, err)
 	}
 
@@ -112,8 +112,8 @@ func main() {
 	log.Printf("successfully generated! (%d photos)", len(photos))
 }
 
-func readConfig() (config, error) {
-	f, err := os.Open(*configFileFlag)
+func readConfig(path string) (config, error) {
+	f, err := os.Open(path)
 	if err != nil {
 		return config{}, err
 	}
@@ -165,8 +165,8 @@ func generateStylesheet(ctx context, distDirectory string) error {
 	return nil
 }
 
-func processPhotos(photosDir, outputDir string) ([]map[string]interface{}, error) {
-	if err := os.MkdirAll(filepath.Join(outputDir, "photos", "thumbnails"), 0750); err != nil {
+func processPhotos(photosDir, distDirectory string) ([]map[string]interface{}, error) {
+	if err := os.MkdirAll(filepath.Join(distDirectory, "photos", "thumbnails"), 0750); err != nil {
 		return nil, err
 	}
 
@@ -188,11 +188,11 @@ func processPhotos(photosDir, outputDir string) ([]map[string]interface{}, error
 			}
 
 			// Determinate if the photo is not already processed
-			photoTargetPath := filepath.Join(outputDir, "photos", info.Name())
+			photoTargetPath := filepath.Join(distDirectory, "photos", info.Name())
 			if !isPhotoProcessed(photoBytes, photoTargetPath) {
 				log.Printf("processing %s", info.Name())
 
-				thumbnailTargetPath := filepath.Join(outputDir, "photos", "thumbnails", info.Name())
+				thumbnailTargetPath := filepath.Join(distDirectory, "photos", "thumbnails", info.Name())
 
 				// Generate thumbnail
 				photo, err := jpeg.Decode(bytes.NewReader(photoBytes))
