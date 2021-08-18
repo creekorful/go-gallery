@@ -184,7 +184,7 @@ func processPhotos(photosDir, outputDir string) ([]map[string]interface{}, error
 		// Determinate if the photo is not already processed
 		photoTargetPath := filepath.Join(outputDir, "photos", info.Name())
 		if !isPhotoProcessed(photoBytes, photoTargetPath) {
-			log.Printf("processing %s", path)
+			log.Printf("processing %s", info.Name())
 
 			thumbnailTargetPath := filepath.Join(outputDir, "photos", "thumbnails", info.Name())
 
@@ -197,7 +197,7 @@ func processPhotos(photosDir, outputDir string) ([]map[string]interface{}, error
 			if err != nil {
 				return err
 			}
-			photo = resize.Resize(640, 0, photo, resize.Lanczos3)
+			photo = resize.Resize(640, 0, photo, resize.MitchellNetravali)
 			if err := jpeg.Encode(thumbFile, photo, nil); err != nil {
 				return err
 			}
