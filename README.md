@@ -17,8 +17,10 @@ the static website will be copied and `-config-file` is the path to the configur
 ```yaml
 title: "go-gallery"
 bg_color: "white"
+font_color: "#111"
 border: "8px"
 thumbnail_max_size: 760
+show_separator: true
 ``` 
 
 Once the website is generated you can upload it using lftp, rsync, etc.
