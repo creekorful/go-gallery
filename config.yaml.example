@@ -1,4 +1,6 @@
 title: "go-gallery"
 bg_color: "#000"
+font_color: "#111"
 border: "4px"
 thumbnail_max_size: 760
+show_separator: true

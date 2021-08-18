@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto&display=swap');
+
 * {
     margin: 0;
 }
@@ -9,10 +11,24 @@
     flex-direction: row;
 }
 
-#photos a {
+#photos .item {
     width: 25%;
 
     outline: {{ .Config.Border }} solid {{ .Config.BgColor }};
+}
+
+#photos .period-separator {
+    font-size: 1.9em;
+    font-weight: bold;
+    text-align: center;
+    color: {{ .Config.FontColor }};
+
+    display: flex;
+    justify-content: center;
+    align-content: center;
+    flex-direction: column;
+
+    font-family: 'Roboto', sans-serif;
 }
 
 #photos img {

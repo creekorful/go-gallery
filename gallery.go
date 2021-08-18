@@ -41,8 +41,10 @@ var (
 type config struct {
 	Title            string `yaml:"title"`
 	BgColor          string `yaml:"bg_color"`
+	FontColor        string `yaml:"font_color"`
 	Border           string `yaml:"border"`
 	ThumbnailMaxSize uint   `yaml:"thumbnail_max_size"`
+	ShowSeparator    bool   `yaml:"show_separator"`
 }
 
 type context struct {
@@ -132,7 +134,28 @@ func readConfig(path string) (config, error) {
 }
 
 func executeTemplate(ctx context, distDirectory, templateName string) error {
-	t, err := template.New(templateName).ParseFS(resDirectory, filepath.Join("res", templateName))
+	t, err := template.
+		New(templateName).
+		Funcs(map[string]interface{}{
+			"samePeriod": func(photos []map[string]interface{}, idx int) bool {
+				left := photos[idx]
+
+				var right map[string]interface{}
+				if idx+1 < len(photos) {
+					right = photos[idx+1]
+				} else {
+					// The end
+					return false
+				}
+
+				leftShootingDate := left["ShootingDate"].(time.Time)
+				rightShootingDate := right["ShootingDate"].(time.Time)
+
+				return leftShootingDate.Year() == rightShootingDate.Year() &&
+					leftShootingDate.Month() == rightShootingDate.Month()
+			},
+		}).
+		ParseFS(resDirectory, filepath.Join("res", templateName))
 	if err != nil {
 		return err
 	}

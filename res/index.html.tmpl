@@ -24,10 +24,20 @@
 </head>
 <body>
 <section id="photos">
-    {{ range .Photos }}
-        <a href="{{ .PhotoPath }}" class="glightbox">
-            <img src="{{ .ThumbnailPath }}"/>
-        </a>
+    {{ range $i, $photo := .Photos }}
+        <div class="item">
+            <a href="{{ $photo.PhotoPath }}" class="glightbox">
+                <img src="{{ $photo.ThumbnailPath }}"/>
+            </a>
+        </div>
+
+        {{ if $.Config.ShowSeparator }}
+            {{ if not (samePeriod $.Photos $i) }}
+                <div class="item period-separator">
+                    {{ $photo.ShootingDate.Month.String }} {{ $photo.ShootingDate.Year }}
+                </div>
+            {{ end }}
+        {{ end }}
     {{ end }}
 </section>
 </body>
