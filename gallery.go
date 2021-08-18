@@ -99,16 +99,16 @@ func main() {
 	}
 
 	for _, file := range files {
-		target := filepath.Join("res", "vendor", file.Name())
-		dest := filepath.Join(*distDirFlag, file.Name())
+		srcPath := filepath.Join("vendor", file.Name())
+		destPath := filepath.Join(*distDirFlag, file.Name())
 
-		if err := copyResFile(target, dest); err != nil {
-			log.Fatalf("error while copying 3rd party file %s: %s", target, err)
+		if err := copyResFile(srcPath, destPath); err != nil {
+			log.Fatalf("error while copying 3rd party file %s: %s", srcPath, err)
 		}
 	}
 
 	// Copy the favicon
-	if err := copyResFile(filepath.Join("res", "favicon.png"), filepath.Join(*distDirFlag, "favicon.png")); err != nil {
+	if err := copyResFile(filepath.Join("favicon.png"), filepath.Join(*distDirFlag, "favicon.png")); err != nil {
 		log.Fatalf("error while copying favicon: %s", err)
 	}
 
@@ -136,8 +136,8 @@ func executeTemplate(ctx context, distDirectory, templateName string) error {
 		return err
 	}
 
-	targetPath := filepath.Join(distDirectory, strings.TrimSuffix(templateName, ".tmpl"))
-	f, err := os.OpenFile(targetPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, filePerm)
+	dstPath := filepath.Join(distDirectory, strings.TrimSuffix(templateName, ".tmpl"))
+	f, err := os.OpenFile(dstPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, filePerm)
 	if err != nil {
 		return err
 	}
@@ -173,18 +173,18 @@ func processPhotos(photosDir, distDirectory string) ([]map[string]interface{}, e
 			}
 
 			// Determinate if the photo is not already processed
-			photoTargetPath := filepath.Join(distDirectory, "photos", info.Name())
-			if !isPhotoProcessed(photoBytes, photoTargetPath) {
+			photoDstPath := filepath.Join(distDirectory, "photos", info.Name())
+			if !isPhotoProcessed(photoBytes, photoDstPath) {
 				log.Printf("processing %s", info.Name())
 
-				thumbnailTargetPath := filepath.Join(distDirectory, "photos", "thumbnails", info.Name())
+				thumbnailDstPath := filepath.Join(distDirectory, "photos", "thumbnails", info.Name())
 
 				// Generate thumbnail
 				photo, err := jpeg.Decode(bytes.NewReader(photoBytes))
 				if err != nil {
 					return err
 				}
-				thumbFile, err := os.Create(thumbnailTargetPath)
+				thumbFile, err := os.Create(thumbnailDstPath)
 				if err != nil {
 					return err
 				}
@@ -194,7 +194,7 @@ func processPhotos(photosDir, distDirectory string) ([]map[string]interface{}, e
 				}
 
 				// Copy the photo
-				if err := ioutil.WriteFile(photoTargetPath, photoBytes, filePerm); err != nil {
+				if err := ioutil.WriteFile(photoDstPath, photoBytes, filePerm); err != nil {
 					return err
 				}
 			} else {
@@ -254,30 +254,30 @@ func processPhotos(photosDir, distDirectory string) ([]map[string]interface{}, e
 	return photos, nil
 }
 
-func isPhotoProcessed(photoBytes []byte, targetPath string) bool {
-	_, err := os.Stat(targetPath)
+func isPhotoProcessed(photoBytes []byte, destPath string) bool {
+	_, err := os.Stat(destPath)
 	if os.IsNotExist(err) {
 		return false
 	}
 
 	// Photo already exists, read it and compare byte-by-byte to determinate if file has changed
-	targetPhotoBytes, err := os.ReadFile(targetPath)
+	destPhotoBytes, err := os.ReadFile(destPath)
 	if err != nil {
 		// todo
 	}
 
-	return bytes.Equal(photoBytes, targetPhotoBytes)
+	return bytes.Equal(photoBytes, destPhotoBytes)
 }
 
 func isJpegFile(file fs.FileInfo) bool {
 	return !file.IsDir() && (strings.HasSuffix(file.Name(), ".jpg") || strings.HasSuffix(file.Name(), ".jpeg"))
 }
 
-func copyResFile(target, dest string) error {
-	content, err := resDirectory.ReadFile(target)
+func copyResFile(srcPath, dstPath string) error {
+	content, err := resDirectory.ReadFile(filepath.Join("res", srcPath))
 	if err != nil {
 		return err
 	}
 
-	return ioutil.WriteFile(dest, content, filePerm)
+	return ioutil.WriteFile(dstPath, content, filePerm)
 }
