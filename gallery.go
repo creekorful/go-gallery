@@ -7,6 +7,7 @@ import (
 	"flag"
 	"github.com/nfnt/resize"
 	"github.com/rwcarlsen/goexif/exif"
+	"golang.org/x/sync/errgroup"
 	"gopkg.in/yaml.v2"
 	"html/template"
 	"image/jpeg"
@@ -17,6 +18,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -170,66 +172,75 @@ func processPhotos(photosDir, outputDir string) ([]map[string]interface{}, error
 
 	var photos []map[string]interface{}
 
+	workers := errgroup.Group{}
+	photosMutex := sync.Mutex{}
+
 	if err := filepath.Walk(photosDir, func(path string, info fs.FileInfo, err error) error {
-		if !isJpegFile(info) {
-			return nil
-		}
+		workers.Go(func() error {
+			if !isJpegFile(info) {
+				return nil
+			}
 
-		// Read the photo
-		photoBytes, err := os.ReadFile(path)
-		if err != nil {
-			return err
-		}
-
-		// Determinate if the photo is not already processed
-		photoTargetPath := filepath.Join(outputDir, "photos", info.Name())
-		if !isPhotoProcessed(photoBytes, photoTargetPath) {
-			log.Printf("processing %s", info.Name())
-
-			thumbnailTargetPath := filepath.Join(outputDir, "photos", "thumbnails", info.Name())
-
-			// Generate thumbnail
-			photo, err := jpeg.Decode(bytes.NewReader(photoBytes))
+			// Read the photo
+			photoBytes, err := os.ReadFile(path)
 			if err != nil {
 				return err
 			}
-			thumbFile, err := os.Create(thumbnailTargetPath)
-			if err != nil {
-				return err
-			}
-			photo = resize.Resize(640, 0, photo, resize.MitchellNetravali)
-			if err := jpeg.Encode(thumbFile, photo, nil); err != nil {
-				return err
+
+			// Determinate if the photo is not already processed
+			photoTargetPath := filepath.Join(outputDir, "photos", info.Name())
+			if !isPhotoProcessed(photoBytes, photoTargetPath) {
+				log.Printf("processing %s", info.Name())
+
+				thumbnailTargetPath := filepath.Join(outputDir, "photos", "thumbnails", info.Name())
+
+				// Generate thumbnail
+				photo, err := jpeg.Decode(bytes.NewReader(photoBytes))
+				if err != nil {
+					return err
+				}
+				thumbFile, err := os.Create(thumbnailTargetPath)
+				if err != nil {
+					return err
+				}
+				photo = resize.Resize(640, 0, photo, resize.MitchellNetravali)
+				if err := jpeg.Encode(thumbFile, photo, nil); err != nil {
+					return err
+				}
+
+				// Copy the photo
+				if err := ioutil.WriteFile(photoTargetPath, photoBytes, 0640); err != nil {
+					return err
+				}
+			} else {
+				log.Printf("skipping existing photo %s", info.Name())
 			}
 
-			// Copy the photo
-			if err := ioutil.WriteFile(photoTargetPath, photoBytes, 0640); err != nil {
-				return err
+			photo := map[string]interface{}{
+				"Title":         info.Name(),
+				"PhotoPath":     filepath.Join("photos", info.Name()),
+				"ThumbnailPath": filepath.Join("photos", "thumbnails", info.Name()),
 			}
-		} else {
-			log.Printf("skipping existing photo %s", info.Name())
-		}
 
-		photo := map[string]interface{}{
-			"Title":         info.Name(),
-			"PhotoPath":     filepath.Join("photos", info.Name()),
-			"ThumbnailPath": filepath.Join("photos", "thumbnails", info.Name()),
-		}
-
-		// Try to parse photo EXIF data to get the shooting date
-		if x, err := exif.Decode(bytes.NewReader(photoBytes)); err == nil {
-			if tag, err := x.Get(exif.DateTimeOriginal); err == nil {
-				if dateTimeStr, err := tag.StringVal(); err == nil {
-					if dateTime, err := time.Parse("2006:01:02 15:04:05", dateTimeStr); err == nil {
-						photo["ShootingDate"] = dateTime
+			// Try to parse photo EXIF data to get the shooting date
+			if x, err := exif.Decode(bytes.NewReader(photoBytes)); err == nil {
+				if tag, err := x.Get(exif.DateTimeOriginal); err == nil {
+					if dateTimeStr, err := tag.StringVal(); err == nil {
+						if dateTime, err := time.Parse("2006:01:02 15:04:05", dateTimeStr); err == nil {
+							photo["ShootingDate"] = dateTime
+						}
 					}
 				}
 			}
-		}
 
-		photos = append(photos, photo)
+			photosMutex.Lock()
+			photos = append(photos, photo)
+			photosMutex.Unlock()
 
-		return nil
+			return nil
+		})
+
+		return workers.Wait()
 	}); err != nil {
 		return nil, err
 	}
