@@ -83,12 +83,12 @@ func main() {
 	ctx := context{Config: config, Photos: photos}
 
 	// Generate the index.html
-	if err := generateIndex(ctx, *distDirFlag); err != nil {
+	if err := executeTemplate(ctx, *distDirFlag, "index.html.tmpl"); err != nil {
 		log.Fatalf("error while generating index.html: %s", err)
 	}
 
 	// Generate the index.css
-	if err := generateStylesheet(ctx, *distDirFlag); err != nil {
+	if err := executeTemplate(ctx, *distDirFlag, "index.css.tmpl"); err != nil {
 		log.Fatalf("error while generating index.css: %s", err)
 	}
 
@@ -130,38 +130,20 @@ func readConfig(path string) (config, error) {
 	return c, nil
 }
 
-func generateIndex(ctx context, distDirectory string) error {
-	t, err := template.New("index.html.tmpl").ParseFS(resDirectory, "res/index.html.tmpl")
+func executeTemplate(ctx context, distDirectory, templateName string) error {
+	t, err := template.New(templateName).ParseFS(resDirectory, filepath.Join("res", templateName))
 	if err != nil {
 		return err
 	}
 
-	f, err := os.OpenFile(filepath.Join(distDirectory, "index.html"), os.O_RDWR|os.O_CREATE|os.O_TRUNC, filePerm)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	if err := t.ExecuteTemplate(f, "index.html.tmpl", ctx); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func generateStylesheet(ctx context, distDirectory string) error {
-	t, err := template.New("index.css.tmpl").ParseFS(resDirectory, "res/index.css.tmpl")
-	if err != nil {
-		return err
-	}
-
-	f, err := os.OpenFile(filepath.Join(distDirectory, "index.css"), os.O_RDWR|os.O_CREATE|os.O_TRUNC, filePerm)
+	targetPath := filepath.Join(distDirectory, strings.TrimSuffix(templateName, ".tmpl"))
+	f, err := os.OpenFile(targetPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, filePerm)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
 
-	if err := t.ExecuteTemplate(f, "index.css.tmpl", ctx); err != nil {
+	if err := t.ExecuteTemplate(f, templateName, ctx); err != nil {
 		return err
 	}
 
