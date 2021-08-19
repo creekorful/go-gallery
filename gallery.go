@@ -138,15 +138,13 @@ func executeTemplate(ctx context, distDirectory, templateName string) error {
 		New(templateName).
 		Funcs(map[string]interface{}{
 			"samePeriod": func(photos []map[string]interface{}, idx int) bool {
-				left := photos[idx]
-
-				var right map[string]interface{}
-				if idx+1 < len(photos) {
-					right = photos[idx+1]
-				} else {
-					// The end
+				// First photo
+				if idx-1 < 0 {
 					return false
 				}
+
+				left := photos[idx-1]
+				right := photos[idx]
 
 				leftShootingDate := left["ShootingDate"].(time.Time)
 				rightShootingDate := right["ShootingDate"].(time.Time)

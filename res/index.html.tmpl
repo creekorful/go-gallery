@@ -25,12 +25,6 @@
 <body>
 <section id="photos">
     {{ range $i, $photo := .Photos }}
-        <div class="item">
-            <a href="{{ $photo.PhotoPath }}" class="glightbox">
-                <img src="{{ $photo.ThumbnailPath }}"/>
-            </a>
-        </div>
-
         {{ if $.Config.ShowSeparator }}
             {{ if not (samePeriod $.Photos $i) }}
                 <div class="item period-separator">
@@ -38,6 +32,12 @@
                 </div>
             {{ end }}
         {{ end }}
+
+        <div class="item">
+            <a href="{{ $photo.PhotoPath }}" class="glightbox">
+                <img src="{{ $photo.ThumbnailPath }}"/>
+            </a>
+        </div>
     {{ end }}
 </section>
 </body>
