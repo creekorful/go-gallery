@@ -2,8 +2,11 @@ package main
 
 import (
 	"bytes"
+	"crypto/md5"
 	"embed"
 	_ "embed"
+	"encoding/hex"
+	"encoding/json"
 	"flag"
 	"github.com/nfnt/resize"
 	"github.com/rwcarlsen/goexif/exif"
@@ -49,7 +52,19 @@ type config struct {
 
 type context struct {
 	Config config
-	Photos []map[string]interface{}
+	Photos []photo
+}
+
+type photo struct {
+	Title         string    `json:"title"`
+	PhotoPath     string    `json:"photo_path"`
+	ThumbnailPath string    `json:"thumbnail_path"`
+	ShootingDate  time.Time `json:"shooting_date,omitempty"`
+	PhotoChecksum string    `json:"photo_checksum"`
+}
+
+type index struct {
+	Photos []photo `json:"photos"`
 }
 
 func main() {
@@ -78,12 +93,32 @@ func main() {
 		log.Fatalf("error while creating %s/ folder: %s", *distDirFlag, err)
 	}
 
-	photos, err := processPhotos(*photosDirFlag, *distDirFlag, config.ThumbnailMaxSize)
+	// Read the previous index
+	previousIndex := index{}
+	b, err := ioutil.ReadFile(filepath.Join(*distDirFlag, "index.json"))
+	if err == nil {
+		if err := json.Unmarshal(b, &previousIndex); err != nil {
+			log.Fatalf("error while reaading index.json: %s", err)
+		}
+	} else if !os.IsNotExist(err) {
+		log.Fatalf("error while reaading index.json: %s", err)
+	}
+
+	photos, err := processPhotos(*photosDirFlag, *distDirFlag, config.ThumbnailMaxSize, previousIndex)
 	if err != nil {
 		log.Fatalf("error while processing photos: %s", err)
 	}
 
 	ctx := context{Config: config, Photos: photos}
+
+	// Generate the index.json
+	indexBytes, err := json.Marshal(index{Photos: photos})
+	if err != nil {
+		log.Fatalf("error while generating index.json: %s", err)
+	}
+	if err := ioutil.WriteFile(filepath.Join(*distDirFlag, "index.json"), indexBytes, filePerm); err != nil {
+		log.Fatalf("error while generating index.json: %s", err)
+	}
 
 	// Generate the index.html
 	if err := executeTemplate(ctx, *distDirFlag, "index.html.tmpl"); err != nil {
@@ -137,7 +172,7 @@ func executeTemplate(ctx context, distDirectory, templateName string) error {
 	t, err := template.
 		New(templateName).
 		Funcs(map[string]interface{}{
-			"samePeriod": func(photos []map[string]interface{}, idx int) bool {
+			"samePeriod": func(photos []photo, idx int) bool {
 				// First photo
 				if idx-1 < 0 {
 					return false
@@ -146,8 +181,8 @@ func executeTemplate(ctx context, distDirectory, templateName string) error {
 				left := photos[idx-1]
 				right := photos[idx]
 
-				leftShootingDate := left["ShootingDate"].(time.Time)
-				rightShootingDate := right["ShootingDate"].(time.Time)
+				leftShootingDate := left.ShootingDate
+				rightShootingDate := right.ShootingDate
 
 				return leftShootingDate.Year() == rightShootingDate.Year() &&
 					leftShootingDate.Month() == rightShootingDate.Month()
@@ -172,12 +207,12 @@ func executeTemplate(ctx context, distDirectory, templateName string) error {
 	return nil
 }
 
-func processPhotos(photosDir, distDirectory string, thumbnailMaxSize uint) ([]map[string]interface{}, error) {
+func processPhotos(photosDir, distDirectory string, thumbnailMaxSize uint, previousIndex index) ([]photo, error) {
 	if err := os.MkdirAll(filepath.Join(distDirectory, "photos", "thumbnails"), dirPerm); err != nil {
 		return nil, err
 	}
 
-	var photos []map[string]interface{}
+	var photos []photo
 
 	workers := errgroup.Group{}
 	photosMutex := sync.Mutex{}
@@ -194,49 +229,24 @@ func processPhotos(photosDir, distDirectory string, thumbnailMaxSize uint) ([]ma
 				return err
 			}
 
+			photo := photo{}
+
 			// Determinate if the photo is not already processed
-			photoDstPath := filepath.Join(distDirectory, "photos", info.Name())
-			if !isPhotoProcessed(photoBytes, photoDstPath) {
+			if !isPhotoProcessed(photoBytes, info.Name(), previousIndex) {
 				log.Printf("processing %s", info.Name())
 
-				thumbnailDstPath := filepath.Join(distDirectory, "photos", "thumbnails", info.Name())
-
-				// Generate thumbnail
-				photo, err := jpeg.Decode(bytes.NewReader(photoBytes))
+				photo, err = processPhoto(photoBytes, thumbnailMaxSize, info.Name(), distDirectory)
 				if err != nil {
-					return err
-				}
-				thumbFile, err := os.Create(thumbnailDstPath)
-				if err != nil {
-					return err
-				}
-
-				photo = resize.Thumbnail(thumbnailMaxSize, thumbnailMaxSize, photo, resize.MitchellNetravali)
-				if err := jpeg.Encode(thumbFile, photo, nil); err != nil {
-					return err
-				}
-
-				// Copy the photo
-				if err := ioutil.WriteFile(photoDstPath, photoBytes, filePerm); err != nil {
-					return err
+					log.Fatalf("error while processing photo %s: %s", info.Name(), err)
 				}
 			} else {
-				log.Printf("skipping existing photo %s", info.Name())
-			}
+				// use already processed photo
+				log.Printf("skipping unchanged photo %s", info.Name())
 
-			photo := map[string]interface{}{
-				"Title":         info.Name(),
-				"PhotoPath":     filepath.Join("photos", info.Name()),
-				"ThumbnailPath": filepath.Join("photos", "thumbnails", info.Name()),
-			}
-
-			// Try to parse photo EXIF data to get the shooting date
-			if x, err := exif.Decode(bytes.NewReader(photoBytes)); err == nil {
-				if tag, err := x.Get(exif.DateTimeOriginal); err == nil {
-					if dateTimeStr, err := tag.StringVal(); err == nil {
-						if dateTime, err := time.Parse("2006:01:02 15:04:05", dateTimeStr); err == nil {
-							photo["ShootingDate"] = dateTime
-						}
+				for _, previousPhoto := range previousIndex.Photos {
+					if previousPhoto.Title == info.Name() {
+						photo = previousPhoto
+						break
 					}
 				}
 			}
@@ -257,13 +267,13 @@ func processPhotos(photosDir, distDirectory string, thumbnailMaxSize uint) ([]ma
 	// otherwise fallback to filename
 	sort.SliceStable(photos, func(left, right int) bool {
 		leftDateTime := time.Time{}
-		if val, exists := photos[left]["ShootingDate"]; exists {
-			leftDateTime = val.(time.Time)
+		if val := photos[left].ShootingDate; !val.IsZero() {
+			leftDateTime = val
 		}
 
 		rightDateTime := time.Time{}
-		if val, exists := photos[right]["ShootingDate"]; exists {
-			rightDateTime = val.(time.Time)
+		if val := photos[right].ShootingDate; !val.IsZero() {
+			rightDateTime = val
 		}
 
 		if !leftDateTime.IsZero() && !rightDateTime.IsZero() {
@@ -271,25 +281,77 @@ func processPhotos(photosDir, distDirectory string, thumbnailMaxSize uint) ([]ma
 		}
 
 		// otherwise, fallback to filename comparison
-		return photos[left]["Title"].(string) > photos[right]["Title"].(string)
+		return photos[left].Title > photos[right].Title
 	})
 
 	return photos, nil
 }
 
-func isPhotoProcessed(photoBytes []byte, destPath string) bool {
-	_, err := os.Stat(destPath)
-	if os.IsNotExist(err) {
+func isPhotoProcessed(photoBytes []byte, photoTitle string, previousIndex index) bool {
+	photoIdx := -1
+
+	for i, current := range previousIndex.Photos {
+		if current.Title == photoTitle {
+			photoIdx = i
+			break
+		}
+	}
+
+	if photoIdx == -1 {
 		return false
 	}
 
-	// Photo already exists, read it and compare byte-by-byte to determinate if file has changed
-	destPhotoBytes, err := os.ReadFile(destPath)
+	hash := md5.Sum(photoBytes)
+
+	return previousIndex.Photos[photoIdx].PhotoChecksum == hex.EncodeToString(hash[:])
+}
+
+func processPhoto(photoBytes []byte, thumbnailMaxSize uint, photoTitle, distDirectory string) (photo, error) {
+	photoDstPath := filepath.Join(distDirectory, "photos", photoTitle)
+	thumbnailDstPath := filepath.Join(distDirectory, "photos", "thumbnails", photoTitle)
+
+	// Generate thumbnail
+	photoImg, err := jpeg.Decode(bytes.NewReader(photoBytes))
 	if err != nil {
-		// todo
+		return photo{}, err
+	}
+	thumbFile, err := os.Create(thumbnailDstPath)
+	if err != nil {
+		return photo{}, err
 	}
 
-	return bytes.Equal(photoBytes, destPhotoBytes)
+	photoImg = resize.Thumbnail(thumbnailMaxSize, thumbnailMaxSize, photoImg, resize.MitchellNetravali)
+	if err := jpeg.Encode(thumbFile, photoImg, nil); err != nil {
+		return photo{}, err
+	}
+
+	// Copy the photo
+	if err := ioutil.WriteFile(photoDstPath, photoBytes, filePerm); err != nil {
+		return photo{}, err
+	}
+
+	photo := photo{
+		Title:         photoTitle,
+		PhotoPath:     filepath.Join("photos", photoTitle),
+		ThumbnailPath: filepath.Join("photos", "thumbnails", photoTitle),
+	}
+
+	// Generate the MD5 of the photos to check for changes on later execution
+	hash := md5.Sum(photoBytes)
+	photo.PhotoChecksum = hex.EncodeToString(hash[:])
+
+	// Try to parse photo EXIF data to get the shooting date
+	if x, err := exif.Decode(bytes.NewReader(photoBytes)); err == nil {
+		if tag, err := x.Get(exif.DateTimeOriginal); err == nil {
+			if dateTimeStr, err := tag.StringVal(); err == nil {
+				if dateTime, err := time.Parse("2006:01:02 15:04:05", dateTimeStr); err == nil {
+					photo.ShootingDate = dateTime
+				}
+			}
+		}
+	}
+
+	return photo, nil
 }
 
 func isJpegFile(file fs.FileInfo) bool {
