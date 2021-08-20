@@ -109,6 +109,23 @@ func main() {
 		log.Fatalf("error while processing photos: %s", err)
 	}
 
+	// Remove removed photos
+	for _, previousPhoto := range previousIndex.Photos {
+		found := false
+		for _, photo := range photos {
+			if photo.Title == previousPhoto.Title {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			log.Printf("deleting removed photo: %s", previousPhoto.Title)
+			_ = os.Remove(filepath.Join(*distDirFlag, previousPhoto.PhotoPath))
+			_ = os.Remove(filepath.Join(*distDirFlag, previousPhoto.ThumbnailPath))
+		}
+	}
+
 	ctx := context{Config: config, Photos: photos}
 
 	// Generate the index.json
