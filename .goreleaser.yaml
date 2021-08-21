@@ -10,6 +10,7 @@ builds:
     binary: go-gallery
     goos:
       - linux
+      - darwin
     goarch:
       - amd64
     env:
