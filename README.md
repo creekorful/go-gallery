@@ -21,6 +21,7 @@ font_color: "#111"
 border: "8px"
 thumbnail_max_size: 760
 show_separator: true
+enable_albums: true
 ``` 
 
 Once the website is generated you can upload it using lftp, rsync, etc.
