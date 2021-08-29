@@ -275,8 +275,12 @@ func processPhotos(photosDir, distDirectory string, thumbnailMaxSize uint, previ
 			return nil
 		})
 
-		return workers.Wait()
+		return nil
 	}); err != nil {
+		return nil, err
+	}
+
+	if err := workers.Wait(); err != nil {
 		return nil, err
 	}
 
