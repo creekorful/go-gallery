@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"flag"
+	"fmt"
 	"github.com/nfnt/resize"
 	"github.com/rwcarlsen/goexif/exif"
 	"golang.org/x/sync/errgroup"
@@ -48,10 +49,21 @@ type config struct {
 	Border           string `yaml:"border"`
 	ThumbnailMaxSize uint   `yaml:"thumbnail_max_size"`
 	ShowSeparator    bool   `yaml:"show_separator"`
+	EnableAlbums     bool   `yaml:"enable_albums"`
 }
 
-type context struct {
+type albumContext struct {
 	Config config
+	Album  album
+}
+
+type indexContext struct {
+	Config config
+	Albums []album
+}
+
+type album struct {
+	Name   string
 	Photos []photo
 }
 
@@ -63,7 +75,7 @@ type photo struct {
 	PhotoChecksum string    `json:"photo_checksum"`
 }
 
-type index struct {
+type albumIndex struct {
 	Photos []photo `json:"photos"`
 }
 
@@ -83,6 +95,7 @@ func main() {
 		log.Fatalf("directory %s does not exist", *photosDirFlag)
 	}
 
+	// Read the configuration
 	config, err := readConfig(*configFileFlag)
 	if err != nil {
 		log.Fatalf("error while reading config: %s", err)
@@ -93,58 +106,39 @@ func main() {
 		log.Fatalf("error while creating %s/ folder: %s", *distDirFlag, err)
 	}
 
-	// Read the previous index
-	previousIndex := index{}
-	b, err := ioutil.ReadFile(filepath.Join(*distDirFlag, "index.json"))
-	if err == nil {
-		if err := json.Unmarshal(b, &previousIndex); err != nil {
-			log.Fatalf("error while reaading index.json: %s", err)
-		}
-	} else if !os.IsNotExist(err) {
-		log.Fatalf("error while reaading index.json: %s", err)
-	}
+	// Generate the album(s)
+	if config.EnableAlbums {
+		var albums []album
+		if err := filepath.Walk(*photosDirFlag, func(path string, info fs.FileInfo, err error) error {
+			if info.IsDir() && path != *photosDirFlag {
+				photos, err := generateAlbum(path, filepath.Join(*distDirFlag, info.Name()), info.Name(), config.ThumbnailMaxSize, config)
+				if err != nil {
+					log.Fatalf("error while generating album: %s", err)
+				}
 
-	photos, err := processPhotos(*photosDirFlag, *distDirFlag, config.ThumbnailMaxSize, previousIndex)
-	if err != nil {
-		log.Fatalf("error while processing photos: %s", err)
-	}
-
-	// Remove removed photos
-	for _, previousPhoto := range previousIndex.Photos {
-		found := false
-		for _, photo := range photos {
-			if photo.Title == previousPhoto.Title {
-				found = true
-				break
+				albums = append(albums, album{
+					Name:   info.Name(),
+					Photos: photos,
+				})
 			}
+
+			return nil
+		}); err != nil {
+			log.Fatalf("error while generating album: %s", err)
 		}
 
-		if !found {
-			log.Printf("deleting removed photo: %s", previousPhoto.Title)
-			_ = os.Remove(filepath.Join(*distDirFlag, previousPhoto.PhotoPath))
-			_ = os.Remove(filepath.Join(*distDirFlag, previousPhoto.ThumbnailPath))
+		// Generate the root index.html, showing the albums
+		if err := executeTemplate(indexContext{Config: config, Albums: albums}, *distDirFlag, "index.html.tmpl", "index.html"); err != nil {
+			log.Fatalf("error while generating index: %s", err)
 		}
-	}
-
-	ctx := context{Config: config, Photos: photos}
-
-	// Generate the index.json
-	indexBytes, err := json.Marshal(index{Photos: photos})
-	if err != nil {
-		log.Fatalf("error while generating index.json: %s", err)
-	}
-	if err := ioutil.WriteFile(filepath.Join(*distDirFlag, "index.json"), indexBytes, filePerm); err != nil {
-		log.Fatalf("error while generating index.json: %s", err)
-	}
-
-	// Generate the index.html
-	if err := executeTemplate(ctx, *distDirFlag, "index.html.tmpl"); err != nil {
-		log.Fatalf("error while generating index.html: %s", err)
-	}
-
-	// Generate the index.css
-	if err := executeTemplate(ctx, *distDirFlag, "index.css.tmpl"); err != nil {
-		log.Fatalf("error while generating index.css: %s", err)
+		// Generate the root index.css
+		if err := executeTemplate(indexContext{Config: config, Albums: albums}, *distDirFlag, "index.css.tmpl", "index.css"); err != nil {
+			log.Fatalf("error while generating index: %s", err)
+		}
+	} else {
+		if _, err := generateAlbum(*photosDirFlag, *distDirFlag, config.Title, config.ThumbnailMaxSize, config); err != nil {
+			log.Fatalf("error while generating album: %s", err)
+		}
 	}
 
 	// Copy the third party files
@@ -152,7 +146,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("error while processing res/vendor: %s", err)
 	}
-
 	for _, file := range files {
 		srcPath := filepath.Join("vendor", file.Name())
 		destPath := filepath.Join(*distDirFlag, file.Name())
@@ -167,7 +160,7 @@ func main() {
 		log.Fatalf("error while copying favicon: %s", err)
 	}
 
-	log.Printf("successfully generated! (%d photos)", len(photos))
+	log.Printf("successfully generated!")
 }
 
 func readConfig(path string) (config, error) {
@@ -185,7 +178,7 @@ func readConfig(path string) (config, error) {
 	return c, nil
 }
 
-func executeTemplate(ctx context, distDirectory, templateName string) error {
+func executeTemplate(ctx interface{}, distDirectory, templateName, fileName string) error {
 	t, err := template.
 		New(templateName).
 		Funcs(map[string]interface{}{
@@ -210,7 +203,7 @@ func executeTemplate(ctx context, distDirectory, templateName string) error {
 		return err
 	}
 
-	dstPath := filepath.Join(distDirectory, strings.TrimSuffix(templateName, ".tmpl"))
+	dstPath := filepath.Join(distDirectory, fileName)
 	f, err := os.OpenFile(dstPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, filePerm)
 	if err != nil {
 		return err
@@ -224,8 +217,19 @@ func executeTemplate(ctx context, distDirectory, templateName string) error {
 	return nil
 }
 
-func processPhotos(photosDir, distDirectory string, thumbnailMaxSize uint, previousIndex index) ([]photo, error) {
-	if err := os.MkdirAll(filepath.Join(distDirectory, "photos", "thumbnails"), dirPerm); err != nil {
+func generateAlbum(srcDirectory, dstDirectory, name string, thumbnailMaxSize uint, config config) ([]photo, error) {
+	// Read the previous index
+	previousIndex := albumIndex{}
+	b, err := ioutil.ReadFile(filepath.Join(dstDirectory, "index.json"))
+	if err == nil {
+		if err := json.Unmarshal(b, &previousIndex); err != nil {
+			return nil, fmt.Errorf("error while reading index.json: %s", err)
+		}
+	} else if !os.IsNotExist(err) {
+		return nil, fmt.Errorf("error while reading index.json: %s", err)
+	}
+
+	if err := os.MkdirAll(filepath.Join(dstDirectory, "photos", "thumbnails"), dirPerm); err != nil {
 		return nil, err
 	}
 
@@ -234,7 +238,7 @@ func processPhotos(photosDir, distDirectory string, thumbnailMaxSize uint, previ
 	workers := errgroup.Group{}
 	photosMutex := sync.Mutex{}
 
-	if err := filepath.Walk(photosDir, func(path string, info fs.FileInfo, err error) error {
+	if err := filepath.Walk(srcDirectory, func(path string, info fs.FileInfo, err error) error {
 		workers.Go(func() error {
 			if !isJpegFile(info) {
 				return nil
@@ -252,7 +256,7 @@ func processPhotos(photosDir, distDirectory string, thumbnailMaxSize uint, previ
 			if !isPhotoProcessed(photoBytes, info.Name(), previousIndex) {
 				log.Printf("processing %s", info.Name())
 
-				photo, err = processPhoto(photoBytes, thumbnailMaxSize, info.Name(), distDirectory)
+				photo, err = processPhoto(photoBytes, thumbnailMaxSize, info.Name(), dstDirectory)
 				if err != nil {
 					log.Fatalf("error while processing photo %s: %s", info.Name(), err)
 				}
@@ -305,10 +309,51 @@ func processPhotos(photosDir, distDirectory string, thumbnailMaxSize uint, previ
 		return photos[left].Title > photos[right].Title
 	})
 
+	// Remove removed photos
+	for _, previousPhoto := range previousIndex.Photos {
+		found := false
+		for _, photo := range photos {
+			if photo.Title == previousPhoto.Title {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			log.Printf("deleting removed photo: %s", previousPhoto.Title)
+			_ = os.Remove(filepath.Join(dstDirectory, previousPhoto.PhotoPath))
+			_ = os.Remove(filepath.Join(dstDirectory, previousPhoto.ThumbnailPath))
+		}
+	}
+
+	ctx := albumContext{Config: config, Album: album{
+		Name:   name,
+		Photos: photos,
+	}}
+
+	// Generate the index.json
+	indexBytes, err := json.Marshal(albumIndex{Photos: photos})
+	if err != nil {
+		return nil, fmt.Errorf("error while generating index.json: %s", err)
+	}
+	if err := ioutil.WriteFile(filepath.Join(dstDirectory, "index.json"), indexBytes, filePerm); err != nil {
+		return nil, fmt.Errorf("error while generating index.json: %s", err)
+	}
+
+	// Generate the index.html
+	if err := executeTemplate(ctx, dstDirectory, "album.html.tmpl", "index.html"); err != nil {
+		return nil, fmt.Errorf("error while generating index.html: %s", err)
+	}
+
+	// Generate the index.css
+	if err := executeTemplate(ctx, dstDirectory, "album.css.tmpl", "index.css"); err != nil {
+		return nil, fmt.Errorf("error while generating index.css: %s", err)
+	}
+
 	return photos, nil
 }
 
-func isPhotoProcessed(photoBytes []byte, photoTitle string, previousIndex index) bool {
+func isPhotoProcessed(photoBytes []byte, photoTitle string, previousIndex albumIndex) bool {
 	photoIdx := -1
 
 	for i, current := range previousIndex.Photos {

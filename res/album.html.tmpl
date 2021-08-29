@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+
+    <title>{{ .Album.Name }}</title>
+
+    <link rel="icon" type="image/png" href="/favicon.png"/>
+
+    <link rel="stylesheet" type="text/css" href="index.css">
+
+    <!-- GLightbox -->
+    <link rel="stylesheet" href="/glightbox.min.css"/>
+    <script src="/glightbox.min.js"></script>
+
+    <script type="text/javascript">
+        document.addEventListener('DOMContentLoaded', function (event) {
+            const lightbox = GLightbox();
+        });
+    </script>
+</head>
+<body>
+<section id="photos">
+    {{ range $i, $photo := .Album.Photos }}
+        {{ if $.Config.ShowSeparator }}
+            {{ if not (samePeriod $.Album.Photos $i) }}
+                <div class="item period-separator">
+                    {{ $photo.ShootingDate.Month.String }} {{ $photo.ShootingDate.Year }}
+                </div>
+            {{ end }}
+        {{ end }}
+
+        <div class="item">
+            <a href="{{ $photo.PhotoPath }}" class="glightbox">
+                <img src="{{ $photo.ThumbnailPath }}"/>
+            </a>
+        </div>
+    {{ end }}
+</section>
+</body>
+</html>
