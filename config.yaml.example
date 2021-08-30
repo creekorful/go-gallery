@@ -1,7 +1,7 @@
 title: "go-gallery"
-bg_color: "#000"
-font_color: "#111"
-border: "4px"
+bg_color: "#1b1c1d"
+font_color: "white"
+border: "3px"
 thumbnail_max_size: 760
 show_separator: true
-enable_albums: false
+enable_albums: true

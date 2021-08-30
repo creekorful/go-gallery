@@ -17,7 +17,10 @@ body {
 #photos .item {
     width: 25%;
 
-    outline: {{ .Config.Border }} solid {{ .Config.BgColor }};
+    border: {{ .Config.Border }} solid {{ .Config.BgColor }};
+    box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    -webkit-box-sizing: border-box;
 }
 
 #photos .period-separator {
