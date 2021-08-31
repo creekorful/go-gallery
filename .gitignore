@@ -1,3 +1,4 @@
 config.yaml
 dist
-.ideares/vendor
+.idea
+res/vendor
