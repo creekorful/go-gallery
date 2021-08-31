@@ -1,7 +1,6 @@
 # go-gallery
 
-Generate a photography portfolio website for your photos.
-A demo is available [here](https://photos.creekorful.org).
+Generate a photography portfolio website for your photos. A demo is available [here](https://photos.creekorful.org).
 
 ## Usage
 
@@ -27,3 +26,13 @@ enable_albums: true
 Once the website is generated you can upload it using lftp, rsync, etc.
 
 The website may eventually be hosted on [Netlify](https://www.netlify.com/)
+
+## How to hack it
+
+In order to prevent embedded code copies, [GLightbox](https://github.com/biati-digital/glightbox) is not provided in
+this repository. Therefore, if you want to hack it locally, you must first vendorize the GLightbox dependency. This can
+be done using the provided Makefile.
+
+```
+$ make build
+```
