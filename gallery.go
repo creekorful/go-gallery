@@ -111,13 +111,15 @@ func main() {
 		var albums []album
 		if err := filepath.Walk(*photosDirFlag, func(path string, info fs.FileInfo, err error) error {
 			if info.IsDir() && path != *photosDirFlag {
-				photos, err := generateAlbum(path, filepath.Join(*distDirFlag, info.Name()), info.Name(), config.ThumbnailMaxSize, config)
+				albumName := strings.ToLower(info.Name())
+
+				photos, err := generateAlbum(path, filepath.Join(*distDirFlag, albumName), albumName, config.ThumbnailMaxSize, config)
 				if err != nil {
 					log.Fatalf("error while generating album: %s", err)
 				}
 
 				albums = append(albums, album{
-					Name:   info.Name(),
+					Name:   albumName,
 					Photos: photos,
 				})
 			}
@@ -196,6 +198,9 @@ func executeTemplate(ctx interface{}, distDirectory, templateName, fileName stri
 
 				return leftShootingDate.Year() == rightShootingDate.Year() &&
 					leftShootingDate.Month() == rightShootingDate.Month()
+			},
+			"capitalize": func(s string) string {
+				return strings.Title(s)
 			},
 		}).
 		ParseFS(resDirectory, filepath.Join("res", templateName))

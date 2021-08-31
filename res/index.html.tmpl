@@ -19,7 +19,7 @@
             <a href="{{ .Name }}">
                 <img src="{{ .Name }}/{{ (index .Photos 0).ThumbnailPath }}"/>
             </a>
-            <div class="title">{{ .Name }}</div>
+            <div class="title">{{ .Name | capitalize }}</div>
         </div>
     {{ end }}
 </section>
