@@ -13,8 +13,11 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Debug
+        run: ls
+
       - name: Vendorize GLightbox
-        run: make vendor
+        run: mkdir res/vendor && make vendor
 
       - name: Set up Go
         uses: actions/setup-go@v2
