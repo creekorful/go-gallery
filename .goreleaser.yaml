@@ -25,6 +25,23 @@ dockers:
       - "creekorful/go-gallery:{{ .Major }}"
     skip_push: false
 
+brews:
+  - name: go-gallery
+    tap:
+      owner: creekorful
+      name: homebrew-packages
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    url_template: "https://github.com/creekorful/go-gallery/releases/download/{{ .Tag }}/{{ replace .ArtifactName \"v\" \"\" }}"
+    download_strategy: CurlDownloadStrategy
+    folder: Formula
+    homepage: "https://github.com/creekorful/go-gallery"
+    description: "Generate a photography portfolio website for your photos"
+    license: "GPL-3.0-only"
+    test: |
+      system "#{bin}/go-gallery -h"
+    install: |
+      bin.install "go-gallery"
+
 checksum:
   name_template: 'checksums.txt'
 
