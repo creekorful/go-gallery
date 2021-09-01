@@ -34,5 +34,5 @@ this repository. Therefore, if you want to hack it locally, you must first vendo
 be done using the provided Makefile.
 
 ```
-$ make build
+$ make vendor
 ```
