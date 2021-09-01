@@ -2,3 +2,4 @@ config.yaml
 dist
 .idea
 res/vendor
+go-gallery

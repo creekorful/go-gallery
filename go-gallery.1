@@ -1,0 +1,51 @@
+.TH GO-GALLERY 1
+.SH NAME
+go-gallery \- generate a photography portfolio website for your photos
+.SH SYNOPSIS
+.B go-gallery
+[\fB\-\-photos-dir\fR \fIDIR\fR]
+[\fB\-\-output-dir\fR \fIDIR\fR]
+[\fB\-\-config-file\fR \fICONFIG\fR]
+.SH DESCRIPTION
+.B go-gallery
+is a static website generator, it process photos from the
+.BR \-\-photos-dir
+and generate thumbnails,
+
+\&.html and .css files into the
+.BR \-\-output-dir
+\&. once generation is done, you'll just need to upload the
+
+resulting directory using
+.BR lftp(1),
+.BR rsync(1),
+etc...
+
+.B go-gallery
+is smart enough to generate only new photos and therefore is
+idempotent.
+.SH OPTIONS
+.TP
+.BR \-\-photos-dir =\fIDIR\fR
+Path to the directory where the photos is
+located.
+.TP
+.BR \-\-output-dir =\fIDIR\fR
+Path to the directory where the gallery will be
+generated.
+.TP
+.BR \-\-config-file =\fICONFIG\fR
+Path to the configuration file.
+.SH EXAMPLES
+To generate a gallery from ~/Photos into a /var/www/photos.example.org using
+.BR go-gallery (1)
+:
+.PP
+.nf
+.RS
+go-gallery --photos-dir ~/Photos \\
+           --output-dir /var/www/photos.example.org \\
+           --config-file ~/.config/go-gallery/config.yaml
+.RE
+.fi
+.PP
