@@ -10,3 +10,6 @@ endif
 
 build: vendor
 	go build -o go-gallery gallery.go
+
+clean:
+	rm go-gallery
