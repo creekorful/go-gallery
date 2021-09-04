@@ -64,6 +64,7 @@ type indexContext struct {
 
 type album struct {
 	Name   string
+	Folder string
 	Photos []photo
 }
 
@@ -111,17 +112,16 @@ func main() {
 		var albums []album
 		if err := filepath.Walk(*photosDirFlag, func(path string, info fs.FileInfo, err error) error {
 			if info.IsDir() && path != *photosDirFlag {
-				albumName := strings.ToLower(info.Name())
+				// Create path from album name. For example 'Night Photos' -> 'night-photos'
+				albumName := strings.ToLower(strings.ReplaceAll(info.Name(), " ", "-"))
 
-				photos, err := generateAlbum(path, filepath.Join(*distDirFlag, albumName), albumName, config.ThumbnailMaxSize, config)
+				album, err := generateAlbum(path, filepath.Join(*distDirFlag, albumName), info.Name(),
+					config.ThumbnailMaxSize, config)
 				if err != nil {
 					log.Fatalf("error while generating album: %s", err)
 				}
 
-				albums = append(albums, album{
-					Name:   albumName,
-					Photos: photos,
-				})
+				albums = append(albums, album)
 			}
 
 			return nil
@@ -199,9 +199,6 @@ func executeTemplate(ctx interface{}, distDirectory, templateName, fileName stri
 				return leftShootingDate.Year() == rightShootingDate.Year() &&
 					leftShootingDate.Month() == rightShootingDate.Month()
 			},
-			"capitalize": func(s string) string {
-				return strings.Title(s)
-			},
 		}).
 		ParseFS(resDirectory, filepath.Join("res", templateName))
 	if err != nil {
@@ -222,20 +219,20 @@ func executeTemplate(ctx interface{}, distDirectory, templateName, fileName stri
 	return nil
 }
 
-func generateAlbum(srcDirectory, dstDirectory, name string, thumbnailMaxSize uint, config config) ([]photo, error) {
+func generateAlbum(srcDirectory, dstDirectory, name string, thumbnailMaxSize uint, config config) (album, error) {
 	// Read the previous index
 	previousIndex := albumIndex{}
 	b, err := ioutil.ReadFile(filepath.Join(dstDirectory, "index.json"))
 	if err == nil {
 		if err := json.Unmarshal(b, &previousIndex); err != nil {
-			return nil, fmt.Errorf("error while reading index.json: %s", err)
+			return album{}, fmt.Errorf("error while reading index.json: %s", err)
 		}
 	} else if !os.IsNotExist(err) {
-		return nil, fmt.Errorf("error while reading index.json: %s", err)
+		return album{}, fmt.Errorf("error while reading index.json: %s", err)
 	}
 
 	if err := os.MkdirAll(filepath.Join(dstDirectory, "photos", "thumbnails"), dirPerm); err != nil {
-		return nil, err
+		return album{}, err
 	}
 
 	var photos []photo
@@ -286,11 +283,11 @@ func generateAlbum(srcDirectory, dstDirectory, name string, thumbnailMaxSize uin
 
 		return nil
 	}); err != nil {
-		return nil, err
+		return album{}, err
 	}
 
 	if err := workers.Wait(); err != nil {
-		return nil, err
+		return album{}, err
 	}
 
 	// sort the photos by shooting date if available
@@ -331,31 +328,35 @@ func generateAlbum(srcDirectory, dstDirectory, name string, thumbnailMaxSize uin
 		}
 	}
 
-	ctx := albumContext{Config: config, Album: album{
-		Name:   name,
+	a := album{
+		Name: name,
+		// Extract album folder from the path
+		Folder: filepath.Base(dstDirectory),
 		Photos: photos,
-	}}
+	}
+
+	ctx := albumContext{Config: config, Album: a}
 
 	// Generate the index.json
 	indexBytes, err := json.Marshal(albumIndex{Photos: photos})
 	if err != nil {
-		return nil, fmt.Errorf("error while generating index.json: %s", err)
+		return album{}, fmt.Errorf("error while generating index.json: %s", err)
 	}
 	if err := ioutil.WriteFile(filepath.Join(dstDirectory, "index.json"), indexBytes, filePerm); err != nil {
-		return nil, fmt.Errorf("error while generating index.json: %s", err)
+		return album{}, fmt.Errorf("error while generating index.json: %s", err)
 	}
 
 	// Generate the index.html
 	if err := executeTemplate(ctx, dstDirectory, "album.html.tmpl", "index.html"); err != nil {
-		return nil, fmt.Errorf("error while generating index.html: %s", err)
+		return album{}, fmt.Errorf("error while generating index.html: %s", err)
 	}
 
 	// Generate the index.css
 	if err := executeTemplate(ctx, dstDirectory, "album.css.tmpl", "index.css"); err != nil {
-		return nil, fmt.Errorf("error while generating index.css: %s", err)
+		return album{}, fmt.Errorf("error while generating index.css: %s", err)
 	}
 
-	return photos, nil
+	return a, nil
 }
 
 func isPhotoProcessed(photoBytes []byte, photoTitle string, previousIndex albumIndex) bool {

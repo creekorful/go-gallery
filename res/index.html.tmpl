@@ -16,10 +16,10 @@
 <section id="albums">
     {{ range .Albums }}
         <div class="album">
-            <a href="{{ .Name }}">
-                <img src="{{ .Name }}/{{ (index .Photos 0).ThumbnailPath }}"/>
+            <a href="{{ .Folder }}">
+                <img src="{{ .Folder }}/{{ (index .Photos 0).ThumbnailPath }}"/>
             </a>
-            <div class="title">{{ .Name | capitalize }}</div>
+            <div class="title">{{ .Name }}</div>
         </div>
     {{ end }}
 </section>
