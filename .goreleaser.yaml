@@ -38,7 +38,7 @@ brews:
     description: "Generate a photography portfolio website for your photos"
     license: "GPL-3.0-only"
     test: |
-      system "#{bin}/go-gallery -h"
+      system "#{bin}/go-gallery", "-h"
     install: |
       bin.install "go-gallery"
 
