@@ -11,6 +11,12 @@
     <link rel="icon" type="image/png" href="/favicon.png"/>
 
     <link rel="stylesheet" type="text/css" href="index.css">
+
+    <meta property="og:title" content="{{ .Config.Title }}"/>
+    <meta property="og:type" content="website"/>
+    <!-- TODO: allow to configure the website cover -->
+    <meta property="og:image"
+          content="{{ .Config.URL }}/{{ (index .Albums 0).Folder }}/{{ (index (index .Albums 0).Photos 0).ThumbnailPath }}"/>
 </head>
 <body>
 <section id="albums">

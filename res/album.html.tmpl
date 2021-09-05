@@ -6,7 +6,7 @@
           content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
 
-    <title>{{ .Album.Name }}</title>
+    <title>{{ .Config.Title }} - {{ .Album.Name }}</title>
 
     <link rel="icon" type="image/png" href="/favicon.png"/>
 
@@ -15,6 +15,11 @@
     <!-- GLightbox -->
     <link rel="stylesheet" href="/glightbox.min.css"/>
     <script src="/glightbox.min.js"></script>
+
+    <meta property="og:title" content="{{ .Config.Title }} - {{ .Album.Name }}"/>
+    <meta property="og:type" content="website"/>
+    <meta property="og:image"
+          content="{{ .Config.URL }}/{{ .Album.Folder }}/{{ (index .Album.Photos 0).ThumbnailPath }}"/>
 
     <script type="text/javascript">
         document.addEventListener('DOMContentLoaded', function (event) {

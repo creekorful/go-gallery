@@ -44,6 +44,7 @@ var (
 // the program configuration file
 type config struct {
 	Title            string `yaml:"title"`
+	URL              string `yaml:"url"`
 	BgColor          string `yaml:"bg_color"`
 	FontColor        string `yaml:"font_color"`
 	Border           string `yaml:"border"`
