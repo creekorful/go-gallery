@@ -16,6 +16,7 @@ the static website will be copied and `-config-file` is the path to the configur
 ```yaml
 title: "go-gallery"
 url: https://photos.example.org
+#cover_url: https://example.org/cover.png <- override the default cover
 bg_color: "#1b1c1d"
 font_color: "white"
 border: "3px"

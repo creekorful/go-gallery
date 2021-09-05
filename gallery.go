@@ -45,6 +45,7 @@ var (
 type config struct {
 	Title            string `yaml:"title"`
 	URL              string `yaml:"url"`
+	CoverURL         string `yaml:"cover_url"`
 	BgColor          string `yaml:"bg_color"`
 	FontColor        string `yaml:"font_color"`
 	Border           string `yaml:"border"`

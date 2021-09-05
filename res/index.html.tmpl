@@ -14,9 +14,13 @@
 
     <meta property="og:title" content="{{ .Config.Title }}"/>
     <meta property="og:type" content="website"/>
-    <!-- TODO: allow to configure the website cover -->
-    <meta property="og:image"
-          content="{{ .Config.URL }}/{{ (index .Albums 0).Folder }}/{{ (index (index .Albums 0).Photos 0).ThumbnailPath }}"/>
+
+    {{ if .Config.CoverURL }}
+        <meta property="og:image" content="{{ .Config.CoverURL }}"/>
+    {{ else }}
+        <meta property="og:image"
+              content="{{ .Config.URL }}/{{ (index .Albums 0).Folder }}/{{ (index (index .Albums 0).Photos 0).ThumbnailPath }}"/>
+    {{ end }}
 </head>
 <body>
 <section id="albums">
