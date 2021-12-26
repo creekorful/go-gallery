@@ -26,6 +26,11 @@ import (
 	"time"
 )
 
+const (
+	sortAsc = iota
+	sortDesc
+)
+
 var (
 	// the program version, exported using LDFLAGS
 	version = "dev"
@@ -52,6 +57,7 @@ type config struct {
 	ThumbnailMaxSize uint   `yaml:"thumbnail_max_size"`
 	ShowSeparator    bool   `yaml:"show_separator"`
 	EnableAlbums     bool   `yaml:"enable_albums"`
+	AlbumSort        string `yaml:"album_sort"`
 }
 
 type albumContext struct {
@@ -292,6 +298,11 @@ func generateAlbum(srcDirectory, dstDirectory, name string, thumbnailMaxSize uin
 		return album{}, err
 	}
 
+	sortOrder := sortDesc
+	if config.AlbumSort == "asc" {
+		sortOrder = sortAsc
+	}
+
 	// sort the photos by shooting date if available
 	// otherwise fallback to filename
 	sort.SliceStable(photos, func(left, right int) bool {
@@ -306,10 +317,18 @@ func generateAlbum(srcDirectory, dstDirectory, name string, thumbnailMaxSize uin
 		}
 
 		if !leftDateTime.IsZero() && !rightDateTime.IsZero() {
+			if sortOrder == sortAsc {
+				return leftDateTime.Before(rightDateTime)
+			}
+
 			return leftDateTime.After(rightDateTime)
 		}
 
 		// otherwise, fallback to filename comparison
+		if sortOrder == sortAsc {
+			return photos[left].Title < photos[right].Title
+		}
+
 		return photos[left].Title > photos[right].Title
 	})
 
