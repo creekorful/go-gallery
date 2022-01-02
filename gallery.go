@@ -448,7 +448,12 @@ func processPhoto(photoBytes []byte, thumbnailMaxSize uint, photoTitle, distDire
 }
 
 func isJpegFile(file fs.FileInfo) bool {
-	return !file.IsDir() && (strings.HasSuffix(file.Name(), ".jpg") || strings.HasSuffix(file.Name(), ".jpeg"))
+	if file.IsDir() {
+		return false
+	}
+
+	fileName := strings.ToLower(file.Name())
+	return strings.HasSuffix(fileName, ".jpg") || strings.HasSuffix(fileName, ".jpeg")
 }
 
 func copyResFile(srcPath, dstPath string) error {
