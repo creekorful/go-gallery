@@ -13,9 +13,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Debug
-        run: ls
-
       - name: Vendorize GLightbox
         run: mkdir res/vendor && make vendor
 
