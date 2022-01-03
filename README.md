@@ -5,7 +5,7 @@ Generate a photography portfolio website for your photos. A demo is available [h
 ## Usage
 
 ```
-$ ./go-gallery -c config.yaml ~/Photos
+$ ./go-gallery -c config.yaml -parallel 8 ~/Photos
 ```
 
 Where `~Photos` is the directory where the images are stored (*.jpg, *.jpeg).
