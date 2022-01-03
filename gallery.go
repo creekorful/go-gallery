@@ -34,20 +34,20 @@ const (
 
 	coverFileName     = "cover.jpg"
 	thumbnailsDirName = "thumbnails"
+
+	filePerm = os.FileMode(0640)
+	dirPerm  = os.FileMode(0750)
 )
 
 var (
 	// the program version, exported using LDFLAGS
 	version = "dev"
 
-	configFileFlag = flag.String("config-file", "config.yaml", "path to the configuration file")
+	configFileFlag = flag.String("c", "config.yaml", "path to the configuration file")
 	parallelFlag   = flag.Int64("parallel", 4, "number of parallel workers when generating photos")
 
 	//go:embed res/*
 	resDirectory embed.FS
-
-	filePerm = os.FileMode(0640)
-	dirPerm  = os.FileMode(0750)
 )
 
 // config represent the program configuration file
