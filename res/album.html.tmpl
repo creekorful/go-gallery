@@ -30,8 +30,8 @@
 <body>
 <section id="photos">
     {{ range $i, $photo := .Album.Photos }}
-        {{ if $.Config.ShowSeparator }}
-            {{ if not (samePeriod $.Album.Photos $i) }}
+        {{ if $.Config.MonthSeparator }}
+            {{ if not (isSameMonth $.Album.Photos $i) }}
                 <div class="item period-separator">
                     {{ $photo.ShootingDate.Month.String }} {{ $photo.ShootingDate.Year }}
                 </div>

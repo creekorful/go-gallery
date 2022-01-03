@@ -53,11 +53,11 @@ type config struct {
 	CoverURL         string `yaml:"cover_url"`
 	BgColor          string `yaml:"bg_color"`
 	FontColor        string `yaml:"font_color"`
-	Border           string `yaml:"border"`
+	BorderSize       string `yaml:"border_size"`
 	ThumbnailMaxSize uint   `yaml:"thumbnail_max_size"`
-	ShowSeparator    bool   `yaml:"show_separator"`
+	MonthSeparator   bool   `yaml:"month_separator"`
 	EnableAlbums     bool   `yaml:"enable_albums"`
-	AlbumSort        string `yaml:"album_sort"`
+	PhotosSorting    string `yaml:"photos_sorting"`
 }
 
 type albumContext struct {
@@ -194,7 +194,7 @@ func executeTemplate(ctx interface{}, outputDirectory, templateName, fileName st
 	t, err := template.
 		New(templateName).
 		Funcs(map[string]interface{}{
-			"samePeriod": func(photos []photo, idx int) bool {
+			"isSameMonth": func(photos []photo, idx int) bool {
 				// First photo
 				if idx-1 < 0 {
 					return false
@@ -302,7 +302,7 @@ func generateAlbum(srcDirectory, outputDirectory, name string, thumbnailMaxSize 
 	}
 
 	sortOrder := sortDesc
-	if config.AlbumSort == "asc" {
+	if config.PhotosSorting == "asc" {
 		sortOrder = sortAsc
 	}
 

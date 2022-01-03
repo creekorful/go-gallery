@@ -3,7 +3,7 @@ url: https://photos.example.org
 #cover_url: https://example.org/cover.png <- override the default cover
 bg_color: "#1b1c1d"
 font_color: "white"
-border: "3px"
+border_size: "3px"
 thumbnail_max_size: 760
-show_separator: true
+month_separator: true
 enable_albums: true
