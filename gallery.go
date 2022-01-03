@@ -271,15 +271,54 @@ func generateAlbum(inputDirectory, outputDirectory, name string, thumbnailMaxSiz
 				return err
 			}
 
-			photo := photo{}
+			p := photo{}
 
-			// Determinate if the photo is not already processed
+			// Generate the photo if not already done
 			if !isPhotoGenerated(photoBytes, info.Name(), previousIndex) {
 				log.Printf("[processing]\t %s", info.Name())
 
-				photo, err = generatePhoto(photoBytes, thumbnailMaxSize, info.Name(), outputDirectory)
+				photoDstPath := filepath.Join(outputDirectory, "photos", info.Name())
+				thumbnailDstPath := filepath.Join(outputDirectory, "photos", "thumbnails", info.Name())
+
+				// Generate thumbnail
+				photoImg, err := jpeg.Decode(bytes.NewReader(photoBytes))
 				if err != nil {
-					log.Fatalf("error while processing photo %s: %s", info.Name(), err)
+					return fmt.Errorf("error while processing photo %s: %s", info.Name(), err)
+				}
+				thumbFile, err := os.Create(thumbnailDstPath)
+				if err != nil {
+					return fmt.Errorf("error while processing photo %s: %s", info.Name(), err)
+				}
+
+				photoImg = resize.Thumbnail(thumbnailMaxSize, thumbnailMaxSize, photoImg, resize.MitchellNetravali)
+				if err := jpeg.Encode(thumbFile, photoImg, nil); err != nil {
+					return fmt.Errorf("error while processing photo %s: %s", info.Name(), err)
+				}
+
+				// Copy the photo
+				if err := ioutil.WriteFile(photoDstPath, photoBytes, filePerm); err != nil {
+					return fmt.Errorf("error while processing photo %s: %s", info.Name(), err)
+				}
+
+				p = photo{
+					Title:         info.Name(),
+					PhotoPath:     filepath.Join("photos", info.Name()),
+					ThumbnailPath: filepath.Join("photos", "thumbnails", info.Name()),
+				}
+
+				// Generate the MD5 of the photos to check for changes on later execution
+				hash := md5.Sum(photoBytes)
+				p.PhotoChecksum = hex.EncodeToString(hash[:])
+
+				// Try to parse photo EXIF data to get the shooting date
+				if x, err := exif.Decode(bytes.NewReader(photoBytes)); err == nil {
+					if tag, err := x.Get(exif.DateTimeOriginal); err == nil {
+						if dateTimeStr, err := tag.StringVal(); err == nil {
+							if dateTime, err := time.Parse("2006:01:02 15:04:05", dateTimeStr); err == nil {
+								p.ShootingDate = dateTime
+							}
+						}
+					}
 				}
 			} else {
 				// use already processed photo
@@ -287,14 +326,14 @@ func generateAlbum(inputDirectory, outputDirectory, name string, thumbnailMaxSiz
 
 				for _, previousPhoto := range previousIndex.Photos {
 					if previousPhoto.Title == info.Name() {
-						photo = previousPhoto
+						p = previousPhoto
 						break
 					}
 				}
 			}
 
 			photosMutex.Lock()
-			photos = append(photos, photo)
+			photos = append(photos, p)
 			photosMutex.Unlock()
 
 			return nil
@@ -423,55 +462,6 @@ func isPhotoGenerated(photoBytes []byte, photoTitle string, previousIndex albumI
 	hash := md5.Sum(photoBytes)
 
 	return previousIndex.Photos[photoIdx].PhotoChecksum == hex.EncodeToString(hash[:])
-}
-
-// generatePhoto generate given photo (i.e: generate thumbnail and copy photo and thumbnail to given directory)
-func generatePhoto(photoBytes []byte, thumbnailMaxSize uint, photoTitle, outputDirectory string) (photo, error) {
-	photoDstPath := filepath.Join(outputDirectory, "photos", photoTitle)
-	thumbnailDstPath := filepath.Join(outputDirectory, "photos", "thumbnails", photoTitle)
-
-	// Generate thumbnail
-	photoImg, err := jpeg.Decode(bytes.NewReader(photoBytes))
-	if err != nil {
-		return photo{}, err
-	}
-	thumbFile, err := os.Create(thumbnailDstPath)
-	if err != nil {
-		return photo{}, err
-	}
-
-	photoImg = resize.Thumbnail(thumbnailMaxSize, thumbnailMaxSize, photoImg, resize.MitchellNetravali)
-	if err := jpeg.Encode(thumbFile, photoImg, nil); err != nil {
-		return photo{}, err
-	}
-
-	// Copy the photo
-	if err := ioutil.WriteFile(photoDstPath, photoBytes, filePerm); err != nil {
-		return photo{}, err
-	}
-
-	photo := photo{
-		Title:         photoTitle,
-		PhotoPath:     filepath.Join("photos", photoTitle),
-		ThumbnailPath: filepath.Join("photos", "thumbnails", photoTitle),
-	}
-
-	// Generate the MD5 of the photos to check for changes on later execution
-	hash := md5.Sum(photoBytes)
-	photo.PhotoChecksum = hex.EncodeToString(hash[:])
-
-	// Try to parse photo EXIF data to get the shooting date
-	if x, err := exif.Decode(bytes.NewReader(photoBytes)); err == nil {
-		if tag, err := x.Get(exif.DateTimeOriginal); err == nil {
-			if dateTimeStr, err := tag.StringVal(); err == nil {
-				if dateTime, err := time.Parse("2006:01:02 15:04:05", dateTimeStr); err == nil {
-					photo.ShootingDate = dateTime
-				}
-			}
-		}
-	}
-
-	return photo, nil
 }
 
 func isJpegFile(file fs.FileInfo) bool {
