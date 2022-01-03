@@ -101,7 +101,7 @@ func main() {
 
 	// Validate parameters
 	if flag.NArg() == 0 {
-		log.Fatalf("correct usage: go-gallery <photos-dir> -c [config.yaml]")
+		log.Fatalf("correct usage: go-gallery -c [config.yaml] <photos-dir>")
 	}
 
 	photosDir := flag.Arg(0)
