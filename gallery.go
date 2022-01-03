@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"crypto/md5"
 	"embed"
 	_ "embed"
@@ -12,6 +13,7 @@ import (
 	"github.com/nfnt/resize"
 	"github.com/rwcarlsen/goexif/exif"
 	"golang.org/x/sync/errgroup"
+	"golang.org/x/sync/semaphore"
 	"gopkg.in/yaml.v2"
 	"html/template"
 	"image/jpeg"
@@ -40,6 +42,7 @@ var (
 	photosDirFlag  = flag.String("photos-dir", "", "path to the photos directory")
 	outputDirFlag  = flag.String("output-dir", "dist", "path where the resulting website should be generated")
 	configFileFlag = flag.String("config-file", "config.yaml", "path to the configuration file")
+	parallelFlag   = flag.Int64("parallel", 4, "number of parallel workers when generating photos")
 
 	//go:embed res/*
 	resDirectory embed.FS
@@ -256,11 +259,18 @@ func generateAlbum(inputDirectory, outputDirectory, name string, thumbnailMaxSiz
 
 	var photos []photo
 
-	workers := errgroup.Group{}
+	sem := semaphore.NewWeighted(*parallelFlag)
+	workers, c := errgroup.WithContext(context.Background())
 	photosMutex := sync.Mutex{}
 
 	if err := filepath.Walk(inputDirectory, func(path string, info fs.FileInfo, err error) error {
+		if err := sem.Acquire(c, 1); err != nil {
+			return err
+		}
+
 		workers.Go(func() error {
+			defer sem.Release(1)
+
 			if !isJpegFile(info) {
 				return nil
 			}
