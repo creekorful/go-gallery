@@ -19,7 +19,7 @@
     <meta property="og:title" content="{{ .Config.Title }} - {{ .Album.Name }}"/>
     <meta property="og:type" content="website"/>
     <meta property="og:image"
-          content="{{ .Config.URL }}/{{ .Album.Folder }}/{{ (index .Album.Photos 0).ThumbnailPath }}"/>
+          content="{{ .Config.URL }}/{{ getAlbumCover .Album }}"/>
 
     <script type="text/javascript">
         document.addEventListener('DOMContentLoaded', function (event) {

@@ -209,6 +209,9 @@ func executeTemplate(ctx interface{}, outputDirectory, templateName, fileName st
 				return leftShootingDate.Year() == rightShootingDate.Year() &&
 					leftShootingDate.Month() == rightShootingDate.Month()
 			},
+			"getAlbumCover": func(album album) string {
+				return fmt.Sprintf("%s/%s", album.Folder, album.Photos[0].ThumbnailPath)
+			},
 		}).
 		ParseFS(resDirectory, filepath.Join("res", templateName))
 	if err != nil {

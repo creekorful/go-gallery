@@ -19,7 +19,7 @@
         <meta property="og:image" content="{{ .Config.CoverURL }}"/>
     {{ else }}
         <meta property="og:image"
-              content="{{ .Config.URL }}/{{ (index .Albums 0).Folder }}/{{ (index (index .Albums 0).Photos 0).ThumbnailPath }}"/>
+              content="{{ .Config.URL }}/{{ getAlbumCover (index .Albums 0) }}"/>
     {{ end }}
 </head>
 <body>
@@ -27,7 +27,7 @@
     {{ range .Albums }}
         <div class="album">
             <a href="{{ .Folder }}">
-                <img src="{{ .Folder }}/{{ (index .Photos 0).ThumbnailPath }}"/>
+                <img src="{{ getAlbumCover . }}">
             </a>
             <div class="title">{{ .Name }}</div>
         </div>
