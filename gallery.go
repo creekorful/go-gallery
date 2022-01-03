@@ -124,10 +124,7 @@ func main() {
 		var albums []album
 		if err := filepath.Walk(*photosDirFlag, func(path string, info fs.FileInfo, err error) error {
 			if info.IsDir() && path != *photosDirFlag {
-				// Create path from album name. For example 'Night Photos' -> 'night-photos'
-				albumName := strings.ToLower(strings.ReplaceAll(info.Name(), " ", "-"))
-
-				album, err := generateAlbum(path, filepath.Join(*outputDirFlag, albumName), info.Name(),
+				album, err := generateAlbum(path, filepath.Join(*outputDirFlag, info.Name()), info.Name(),
 					config.ThumbnailMaxSize, config)
 				if err != nil {
 					log.Fatalf("error while generating album: %s", err)
@@ -241,7 +238,7 @@ func executeTemplate(ctx interface{}, outputDirectory, templateName, fileName st
 }
 
 // generateAlbum generate album located in srcDirectory to given outputDirectory and returns it
-func generateAlbum(srcDirectory, outputDirectory, name string, thumbnailMaxSize uint, config config) (album, error) {
+func generateAlbum(inputDirectory, outputDirectory, name string, thumbnailMaxSize uint, config config) (album, error) {
 	// Read the previous index
 	previousIndex := albumIndex{}
 	b, err := ioutil.ReadFile(filepath.Join(outputDirectory, "index.json"))
@@ -262,7 +259,7 @@ func generateAlbum(srcDirectory, outputDirectory, name string, thumbnailMaxSize 
 	workers := errgroup.Group{}
 	photosMutex := sync.Mutex{}
 
-	if err := filepath.Walk(srcDirectory, func(path string, info fs.FileInfo, err error) error {
+	if err := filepath.Walk(inputDirectory, func(path string, info fs.FileInfo, err error) error {
 		workers.Go(func() error {
 			if !isJpegFile(info) {
 				return nil
