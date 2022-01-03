@@ -29,6 +29,8 @@ import (
 const (
 	sortAsc = iota
 	sortDesc
+
+	coverFileName = "cover.jpg"
 )
 
 var (
@@ -74,6 +76,7 @@ type album struct {
 	Name   string
 	Folder string
 	Photos []photo
+	Cover  *photo
 }
 
 type photo struct {
@@ -86,6 +89,7 @@ type photo struct {
 
 type albumIndex struct {
 	Photos []photo `json:"photos"`
+	Cover  *photo  `json:"cover,omitempty"`
 }
 
 func main() {
@@ -210,6 +214,10 @@ func executeTemplate(ctx interface{}, outputDirectory, templateName, fileName st
 					leftShootingDate.Month() == rightShootingDate.Month()
 			},
 			"getAlbumCover": func(album album) string {
+				if album.Cover != nil {
+					return fmt.Sprintf("%s/%s", album.Folder, album.Cover.ThumbnailPath)
+				}
+
 				return fmt.Sprintf("%s/%s", album.Folder, album.Photos[0].ThumbnailPath)
 			},
 		}).
@@ -362,10 +370,24 @@ func generateAlbum(srcDirectory, outputDirectory, name string, thumbnailMaxSize 
 		Photos: photos,
 	}
 
+	// Determinate if a cover is available
+	for _, p := range photos {
+		if p.Title == coverFileName {
+			a.Cover = &photo{
+				Title:         p.Title,
+				PhotoPath:     p.PhotoPath,
+				ThumbnailPath: p.ThumbnailPath,
+				ShootingDate:  p.ShootingDate,
+				PhotoChecksum: p.PhotoChecksum,
+			}
+			break
+		}
+	}
+
 	ctx := albumContext{Config: config, Album: a}
 
 	// Generate the index.json
-	indexBytes, err := json.Marshal(albumIndex{Photos: photos})
+	indexBytes, err := json.Marshal(albumIndex{Photos: photos, Cover: a.Cover})
 	if err != nil {
 		return album{}, fmt.Errorf("error while generating index.json: %s", err)
 	}
