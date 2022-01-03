@@ -32,23 +32,22 @@ const (
 	sortAsc = iota
 	sortDesc
 
-	coverFileName = "cover.jpg"
+	coverFileName     = "cover.jpg"
+	thumbnailsDirName = "thumbnails"
+
+	filePerm = os.FileMode(0640)
+	dirPerm  = os.FileMode(0750)
 )
 
 var (
 	// the program version, exported using LDFLAGS
 	version = "dev"
 
-	photosDirFlag  = flag.String("photos-dir", "", "path to the photos directory")
-	outputDirFlag  = flag.String("output-dir", "dist", "path where the resulting website should be generated")
-	configFileFlag = flag.String("config-file", "config.yaml", "path to the configuration file")
+	configFileFlag = flag.String("c", "config.yaml", "path to the configuration file")
 	parallelFlag   = flag.Int64("parallel", 4, "number of parallel workers when generating photos")
 
 	//go:embed res/*
 	resDirectory embed.FS
-
-	filePerm = os.FileMode(0640)
-	dirPerm  = os.FileMode(0750)
 )
 
 // config represent the program configuration file
@@ -101,14 +100,16 @@ func main() {
 	log.Printf("running go-gallery %s", version)
 
 	// Validate parameters
-	if *photosDirFlag == "" {
-		log.Fatalf("missing required parameter --photos-dir")
+	if flag.NArg() == 0 {
+		log.Fatalf("correct usage: go-gallery -c [config.yaml] <photos-dir>")
 	}
 
+	photosDir := flag.Arg(0)
+
 	// Make sure photosDir exists
-	_, err := os.Stat(*photosDirFlag)
+	_, err := os.Stat(photosDir)
 	if os.IsNotExist(err) {
-		log.Fatalf("directory %s does not exist", *photosDirFlag)
+		log.Fatalf("directory %s does not exist", photosDir)
 	}
 
 	// Read the configuration
@@ -117,18 +118,12 @@ func main() {
 		log.Fatalf("error while reading config: %s", err)
 	}
 
-	// Create dist folder
-	if err := os.MkdirAll(*outputDirFlag, dirPerm); err != nil {
-		log.Fatalf("error while creating %s/ folder: %s", *outputDirFlag, err)
-	}
-
 	// Generate the album(s)
 	if config.EnableAlbums {
 		var albums []album
-		if err := filepath.Walk(*photosDirFlag, func(path string, info fs.FileInfo, err error) error {
-			if info.IsDir() && path != *photosDirFlag {
-				album, err := generateAlbum(path, filepath.Join(*outputDirFlag, info.Name()), info.Name(),
-					config.ThumbnailMaxSize, config)
+		if err := filepath.Walk(photosDir, func(path string, info fs.FileInfo, err error) error {
+			if info.IsDir() && path != photosDir && info.Name() != thumbnailsDirName {
+				album, err := generateAlbum(path, info.Name(), config)
 				if err != nil {
 					log.Fatalf("error while generating album: %s", err)
 				}
@@ -142,15 +137,15 @@ func main() {
 		}
 
 		// Generate the root index.html, showing the albums
-		if err := executeTemplate(indexContext{Config: config, Albums: albums}, *outputDirFlag, "index.html.tmpl", "index.html"); err != nil {
+		if err := executeTemplate(indexContext{Config: config, Albums: albums}, photosDir, "index.html.tmpl", "index.html"); err != nil {
 			log.Fatalf("error while generating index: %s", err)
 		}
 		// Generate the root index.css
-		if err := executeTemplate(indexContext{Config: config, Albums: albums}, *outputDirFlag, "index.css.tmpl", "index.css"); err != nil {
+		if err := executeTemplate(indexContext{Config: config, Albums: albums}, photosDir, "index.css.tmpl", "index.css"); err != nil {
 			log.Fatalf("error while generating index: %s", err)
 		}
 	} else {
-		if _, err := generateAlbum(*photosDirFlag, *outputDirFlag, config.Title, config.ThumbnailMaxSize, config); err != nil {
+		if _, err := generateAlbum(photosDir, config.Title, config); err != nil {
 			log.Fatalf("error while generating album: %s", err)
 		}
 	}
@@ -162,7 +157,7 @@ func main() {
 	}
 	for _, file := range files {
 		srcPath := filepath.Join("vendor", file.Name())
-		destPath := filepath.Join(*outputDirFlag, file.Name())
+		destPath := filepath.Join(photosDir, file.Name())
 
 		if err := copyResFile(srcPath, destPath); err != nil {
 			log.Fatalf("error while copying 3rd party file %s: %s", srcPath, err)
@@ -170,7 +165,7 @@ func main() {
 	}
 
 	// Copy the favicon
-	if err := copyResFile(filepath.Join("favicon.png"), filepath.Join(*outputDirFlag, "favicon.png")); err != nil {
+	if err := copyResFile(filepath.Join("favicon.png"), filepath.Join(photosDir, "favicon.png")); err != nil {
 		log.Fatalf("error while copying favicon: %s", err)
 	}
 
@@ -240,11 +235,10 @@ func executeTemplate(ctx interface{}, outputDirectory, templateName, fileName st
 	return nil
 }
 
-// generateAlbum generate album located in srcDirectory to given outputDirectory and returns it
-func generateAlbum(inputDirectory, outputDirectory, name string, thumbnailMaxSize uint, config config) (album, error) {
+func generateAlbum(directory, name string, config config) (album, error) {
 	// Read the previous index
 	previousIndex := albumIndex{}
-	b, err := ioutil.ReadFile(filepath.Join(outputDirectory, "index.json"))
+	b, err := ioutil.ReadFile(filepath.Join(directory, "index.json"))
 	if err == nil {
 		if err := json.Unmarshal(b, &previousIndex); err != nil {
 			return album{}, fmt.Errorf("error while reading index.json: %s", err)
@@ -253,7 +247,7 @@ func generateAlbum(inputDirectory, outputDirectory, name string, thumbnailMaxSiz
 		return album{}, fmt.Errorf("error while reading index.json: %s", err)
 	}
 
-	if err := os.MkdirAll(filepath.Join(outputDirectory, "photos", "thumbnails"), dirPerm); err != nil {
+	if err := os.MkdirAll(filepath.Join(directory, thumbnailsDirName), dirPerm); err != nil {
 		return album{}, err
 	}
 
@@ -263,7 +257,12 @@ func generateAlbum(inputDirectory, outputDirectory, name string, thumbnailMaxSiz
 	workers, c := errgroup.WithContext(context.Background())
 	photosMutex := sync.Mutex{}
 
-	if err := filepath.Walk(inputDirectory, func(path string, info fs.FileInfo, err error) error {
+	if err := filepath.WalkDir(directory, func(path string, entry fs.DirEntry, err error) error {
+		// Ignore subdirectories
+		if entry.IsDir() && directory != path {
+			return fs.SkipDir
+		}
+
 		if err := sem.Acquire(c, 1); err != nil {
 			return err
 		}
@@ -271,7 +270,7 @@ func generateAlbum(inputDirectory, outputDirectory, name string, thumbnailMaxSiz
 		workers.Go(func() error {
 			defer sem.Release(1)
 
-			if !isJpegFile(info) {
+			if !isJpegFile(entry) {
 				return nil
 			}
 
@@ -284,36 +283,28 @@ func generateAlbum(inputDirectory, outputDirectory, name string, thumbnailMaxSiz
 			p := photo{}
 
 			// Generate the photo if not already done
-			if !isPhotoGenerated(photoBytes, info.Name(), previousIndex) {
-				log.Printf("[processing]\t %s", info.Name())
-
-				photoDstPath := filepath.Join(outputDirectory, "photos", info.Name())
-				thumbnailDstPath := filepath.Join(outputDirectory, "photos", "thumbnails", info.Name())
+			if !isPhotoGenerated(photoBytes, entry.Name(), previousIndex) {
+				log.Printf("[processing]\t %s", entry.Name())
 
 				// Generate thumbnail
 				photoImg, err := jpeg.Decode(bytes.NewReader(photoBytes))
 				if err != nil {
-					return fmt.Errorf("error while processing photo %s: %s", info.Name(), err)
+					return fmt.Errorf("error while processing photo %s: %s", entry.Name(), err)
 				}
-				thumbFile, err := os.Create(thumbnailDstPath)
+				thumbFile, err := os.Create(filepath.Join(directory, thumbnailsDirName, entry.Name()))
 				if err != nil {
-					return fmt.Errorf("error while processing photo %s: %s", info.Name(), err)
+					return fmt.Errorf("error while processing photo %s: %s", entry.Name(), err)
 				}
 
-				photoImg = resize.Thumbnail(thumbnailMaxSize, thumbnailMaxSize, photoImg, resize.MitchellNetravali)
+				photoImg = resize.Thumbnail(config.ThumbnailMaxSize, config.ThumbnailMaxSize, photoImg, resize.MitchellNetravali)
 				if err := jpeg.Encode(thumbFile, photoImg, nil); err != nil {
-					return fmt.Errorf("error while processing photo %s: %s", info.Name(), err)
-				}
-
-				// Copy the photo
-				if err := ioutil.WriteFile(photoDstPath, photoBytes, filePerm); err != nil {
-					return fmt.Errorf("error while processing photo %s: %s", info.Name(), err)
+					return fmt.Errorf("error while processing photo %s: %s", entry.Name(), err)
 				}
 
 				p = photo{
-					Title:         info.Name(),
-					PhotoPath:     filepath.Join("photos", info.Name()),
-					ThumbnailPath: filepath.Join("photos", "thumbnails", info.Name()),
+					Title:         entry.Name(),
+					PhotoPath:     filepath.Join(entry.Name()),
+					ThumbnailPath: filepath.Join(thumbnailsDirName, entry.Name()),
 				}
 
 				// Generate the MD5 of the photos to check for changes on later execution
@@ -332,10 +323,10 @@ func generateAlbum(inputDirectory, outputDirectory, name string, thumbnailMaxSiz
 				}
 			} else {
 				// use already processed photo
-				log.Printf("[skipping]\t %s", info.Name())
+				log.Printf("[skipping]\t %s", entry.Name())
 
 				for _, previousPhoto := range previousIndex.Photos {
-					if previousPhoto.Title == info.Name() {
+					if previousPhoto.Title == entry.Name() {
 						p = previousPhoto
 						break
 					}
@@ -404,15 +395,14 @@ func generateAlbum(inputDirectory, outputDirectory, name string, thumbnailMaxSiz
 
 		if !found {
 			log.Printf("[deleting]\t %s", previousPhoto.Title)
-			_ = os.Remove(filepath.Join(outputDirectory, previousPhoto.PhotoPath))
-			_ = os.Remove(filepath.Join(outputDirectory, previousPhoto.ThumbnailPath))
+			_ = os.Remove(filepath.Join(directory, previousPhoto.ThumbnailPath))
 		}
 	}
 
 	a := album{
 		Name: name,
 		// Extract album folder from the path
-		Folder: filepath.Base(outputDirectory),
+		Folder: filepath.Base(directory),
 		Photos: photos,
 	}
 
@@ -437,17 +427,17 @@ func generateAlbum(inputDirectory, outputDirectory, name string, thumbnailMaxSiz
 	if err != nil {
 		return album{}, fmt.Errorf("error while generating index.json: %s", err)
 	}
-	if err := ioutil.WriteFile(filepath.Join(outputDirectory, "index.json"), indexBytes, filePerm); err != nil {
+	if err := ioutil.WriteFile(filepath.Join(directory, "index.json"), indexBytes, filePerm); err != nil {
 		return album{}, fmt.Errorf("error while generating index.json: %s", err)
 	}
 
 	// Generate the index.html
-	if err := executeTemplate(ctx, outputDirectory, "album.html.tmpl", "index.html"); err != nil {
+	if err := executeTemplate(ctx, directory, "album.html.tmpl", "index.html"); err != nil {
 		return album{}, fmt.Errorf("error while generating index.html: %s", err)
 	}
 
 	// Generate the index.css
-	if err := executeTemplate(ctx, outputDirectory, "album.css.tmpl", "index.css"); err != nil {
+	if err := executeTemplate(ctx, directory, "album.css.tmpl", "index.css"); err != nil {
 		return album{}, fmt.Errorf("error while generating index.css: %s", err)
 	}
 
@@ -474,12 +464,8 @@ func isPhotoGenerated(photoBytes []byte, photoTitle string, previousIndex albumI
 	return previousIndex.Photos[photoIdx].PhotoChecksum == hex.EncodeToString(hash[:])
 }
 
-func isJpegFile(file fs.FileInfo) bool {
-	if file.IsDir() {
-		return false
-	}
-
-	fileName := strings.ToLower(file.Name())
+func isJpegFile(entry fs.DirEntry) bool {
+	fileName := strings.ToLower(entry.Name())
 	return strings.HasSuffix(fileName, ".jpg") || strings.HasSuffix(fileName, ".jpeg")
 }
 

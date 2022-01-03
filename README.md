@@ -5,11 +5,13 @@ Generate a photography portfolio website for your photos. A demo is available [h
 ## Usage
 
 ```
-$ ./go-gallery -photos-dir ~/Photos -output-dir /var/www/photos.example.org -config-file config.yaml
+$ ./go-gallery -c config.yaml ~/Photos
 ```
 
-Where `-photos-dir` is the directory where the images are stored (*.jpg, *.jpeg), `-output-dir` is the directory where
-the static website will be copied and `-config-file` is the path to the configuration file.
+Where `~Photos` is the directory where the images are stored (*.jpg, *.jpeg).
+
+The software will generate a bunch of .html and .css file to turn your directory as a static website, that you 
+can upload to Netlify, S3, or an FTP server afterwards.
 
 ### The configuration file
 
@@ -23,11 +25,7 @@ border_size: "3px"
 thumbnail_max_size: 760
 month_separator: true
 enable_albums: true
-``` 
-
-Once the website is generated you can upload it using lftp, rsync, etc.
-
-The website may eventually be hosted on [Netlify](https://www.netlify.com/)
+```
 
 ## How to hack it
 
