@@ -270,7 +270,7 @@ func generateAlbum(srcDirectory, outputDirectory, name string, thumbnailMaxSize 
 
 			// Determinate if the photo is not already processed
 			if !isPhotoGenerated(photoBytes, info.Name(), previousIndex) {
-				log.Printf("[processing] %s", info.Name())
+				log.Printf("[processing]\t %s", info.Name())
 
 				photo, err = generatePhoto(photoBytes, thumbnailMaxSize, info.Name(), outputDirectory)
 				if err != nil {
@@ -278,7 +278,7 @@ func generateAlbum(srcDirectory, outputDirectory, name string, thumbnailMaxSize 
 				}
 			} else {
 				// use already processed photo
-				log.Printf("[skipping] %s", info.Name())
+				log.Printf("[skipping]\t %s", info.Name())
 
 				for _, previousPhoto := range previousIndex.Photos {
 					if previousPhoto.Title == info.Name() {
@@ -349,7 +349,7 @@ func generateAlbum(srcDirectory, outputDirectory, name string, thumbnailMaxSize 
 		}
 
 		if !found {
-			log.Printf("[deleting] %s", previousPhoto.Title)
+			log.Printf("[deleting]\t %s", previousPhoto.Title)
 			_ = os.Remove(filepath.Join(outputDirectory, previousPhoto.PhotoPath))
 			_ = os.Remove(filepath.Join(outputDirectory, previousPhoto.ThumbnailPath))
 		}
