@@ -40,7 +40,6 @@ var (
 	// the program version, exported using LDFLAGS
 	version = "dev"
 
-	photosDirFlag  = flag.String("photos-dir", "", "path to the photos directory")
 	configFileFlag = flag.String("config-file", "config.yaml", "path to the configuration file")
 	parallelFlag   = flag.Int64("parallel", 4, "number of parallel workers when generating photos")
 
@@ -101,14 +100,16 @@ func main() {
 	log.Printf("running go-gallery %s", version)
 
 	// Validate parameters
-	if *photosDirFlag == "" {
-		log.Fatalf("missing required parameter --photos-dir")
+	if flag.NArg() == 0 {
+		log.Fatalf("correct usage: go-gallery <photos-dir> -c [config.yaml]")
 	}
 
+	photosDir := flag.Arg(0)
+
 	// Make sure photosDir exists
-	_, err := os.Stat(*photosDirFlag)
+	_, err := os.Stat(photosDir)
 	if os.IsNotExist(err) {
-		log.Fatalf("directory %s does not exist", *photosDirFlag)
+		log.Fatalf("directory %s does not exist", photosDir)
 	}
 
 	// Read the configuration
@@ -120,8 +121,8 @@ func main() {
 	// Generate the album(s)
 	if config.EnableAlbums {
 		var albums []album
-		if err := filepath.Walk(*photosDirFlag, func(path string, info fs.FileInfo, err error) error {
-			if info.IsDir() && path != *photosDirFlag && info.Name() != thumbnailsDirName {
+		if err := filepath.Walk(photosDir, func(path string, info fs.FileInfo, err error) error {
+			if info.IsDir() && path != photosDir && info.Name() != thumbnailsDirName {
 				album, err := generateAlbum(path, info.Name(), config)
 				if err != nil {
 					log.Fatalf("error while generating album: %s", err)
@@ -136,15 +137,15 @@ func main() {
 		}
 
 		// Generate the root index.html, showing the albums
-		if err := executeTemplate(indexContext{Config: config, Albums: albums}, *photosDirFlag, "index.html.tmpl", "index.html"); err != nil {
+		if err := executeTemplate(indexContext{Config: config, Albums: albums}, photosDir, "index.html.tmpl", "index.html"); err != nil {
 			log.Fatalf("error while generating index: %s", err)
 		}
 		// Generate the root index.css
-		if err := executeTemplate(indexContext{Config: config, Albums: albums}, *photosDirFlag, "index.css.tmpl", "index.css"); err != nil {
+		if err := executeTemplate(indexContext{Config: config, Albums: albums}, photosDir, "index.css.tmpl", "index.css"); err != nil {
 			log.Fatalf("error while generating index: %s", err)
 		}
 	} else {
-		if _, err := generateAlbum(*photosDirFlag, config.Title, config); err != nil {
+		if _, err := generateAlbum(photosDir, config.Title, config); err != nil {
 			log.Fatalf("error while generating album: %s", err)
 		}
 	}
@@ -156,7 +157,7 @@ func main() {
 	}
 	for _, file := range files {
 		srcPath := filepath.Join("vendor", file.Name())
-		destPath := filepath.Join(*photosDirFlag, file.Name())
+		destPath := filepath.Join(photosDir, file.Name())
 
 		if err := copyResFile(srcPath, destPath); err != nil {
 			log.Fatalf("error while copying 3rd party file %s: %s", srcPath, err)
@@ -164,7 +165,7 @@ func main() {
 	}
 
 	// Copy the favicon
-	if err := copyResFile(filepath.Join("favicon.png"), filepath.Join(*photosDirFlag, "favicon.png")); err != nil {
+	if err := copyResFile(filepath.Join("favicon.png"), filepath.Join(photosDir, "favicon.png")); err != nil {
 		log.Fatalf("error while copying favicon: %s", err)
 	}
 
