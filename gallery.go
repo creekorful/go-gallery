@@ -128,7 +128,10 @@ func main() {
 					log.Fatalf("error while generating album: %s", err)
 				}
 
-				albums = append(albums, album)
+				// Make sure there's photos in the directory
+				if len(album.Photos) > 0 {
+					albums = append(albums, album)
+				}
 			}
 
 			return nil
