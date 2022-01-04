@@ -250,10 +250,6 @@ func generateAlbum(directory, name string, config config) (album, error) {
 		return album{}, fmt.Errorf("error while reading index.json: %s", err)
 	}
 
-	if err := os.MkdirAll(filepath.Join(directory, thumbnailsDirName), dirPerm); err != nil {
-		return album{}, err
-	}
-
 	var photos []photo
 
 	sem := semaphore.NewWeighted(*parallelFlag)
@@ -261,8 +257,8 @@ func generateAlbum(directory, name string, config config) (album, error) {
 	photosMutex := sync.Mutex{}
 
 	if err := filepath.WalkDir(directory, func(path string, entry fs.DirEntry, err error) error {
-		// Ignore subdirectories
-		if entry.IsDir() && directory != path {
+		// Do not process thumbnails as photos
+		if entry.IsDir() && entry.Name() == thumbnailsDirName {
 			return fs.SkipDir
 		}
 
@@ -287,14 +283,26 @@ func generateAlbum(directory, name string, config config) (album, error) {
 
 			// Generate the photo if not already done
 			if !isPhotoGenerated(photoBytes, entry.Name(), previousIndex) {
+				// Get photo relative path (from album directory)
+				photoRelPath, err := filepath.Rel(directory, path)
+				if err != nil {
+					return err
+				}
+
 				log.Printf("[processing]\t %s", entry.Name())
 
-				// Generate thumbnail
+				// Generate thumbnail directory in folder
+				thumbnailRelPath := filepath.Join(filepath.Dir(photoRelPath), thumbnailsDirName, entry.Name())
+
+				if err := os.MkdirAll(filepath.Join(directory, filepath.Dir(thumbnailRelPath)), dirPerm); err != nil {
+					return err
+				}
+
 				photoImg, err := jpeg.Decode(bytes.NewReader(photoBytes))
 				if err != nil {
 					return fmt.Errorf("error while processing photo %s: %s", entry.Name(), err)
 				}
-				thumbFile, err := os.Create(filepath.Join(directory, thumbnailsDirName, entry.Name()))
+				thumbFile, err := os.Create(filepath.Join(directory, thumbnailRelPath))
 				if err != nil {
 					return fmt.Errorf("error while processing photo %s: %s", entry.Name(), err)
 				}
@@ -306,8 +314,8 @@ func generateAlbum(directory, name string, config config) (album, error) {
 
 				p = photo{
 					Title:         entry.Name(),
-					PhotoPath:     filepath.Join(entry.Name()),
-					ThumbnailPath: filepath.Join(thumbnailsDirName, entry.Name()),
+					PhotoPath:     photoRelPath,
+					ThumbnailPath: thumbnailRelPath,
 				}
 
 				// Generate the MD5 of the photos to check for changes on later execution
@@ -472,6 +480,10 @@ func isPhotoGenerated(photoBytes []byte, photoTitle string, previousIndex albumI
 }
 
 func isJpegFile(entry fs.DirEntry) bool {
+	if entry.IsDir() {
+		return false
+	}
+
 	fileName := strings.ToLower(entry.Name())
 	return strings.HasSuffix(fileName, ".jpg") || strings.HasSuffix(fileName, ".jpeg")
 }
