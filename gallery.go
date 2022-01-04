@@ -402,6 +402,10 @@ func generateAlbum(directory, name string, config config) (album, error) {
 		}
 	}
 
+	if len(photos) == 0 {
+		return album{}, nil
+	}
+
 	a := album{
 		Name: name,
 		// Extract album folder from the path
