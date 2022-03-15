@@ -9,14 +9,21 @@ body {
 }
 
 #albums {
-    display: flex;
-    flex-wrap: wrap;
-    flex-direction: row;
+    line-height: 0;
+
+    -webkit-column-count: 4;
+    -moz-column-count: 4;
+    column-count: 4;
+
+    -webkit-column-gap: 0px;
+    -moz-column-gap: 0px;
+    column-gap: 0px;
 }
 
 #albums .album {
-    width: 25%;
     position: relative;
+    width: 100% !important;
+    height: auto !important;
 
     border: {{ .Config.BorderSize }} solid {{ .Config.BgColor }};
     box-sizing: border-box;
@@ -54,25 +61,33 @@ body {
 }
 
 @media (max-width: 1400px) {
-    #albums .album {
-        width: 25%;
+    #albums {
+        -webkit-column-count: 4;
+        -moz-column-count: 4;
+        column-count: 4;
     }
 }
 
 @media (max-width: 1000px) {
-    #albums .album {
-        width: 33.33%;
+    #albums {
+        -webkit-column-count: 3;
+        -moz-column-count: 3;
+        column-count: 3;
     }
 }
 
 @media (max-width: 800px) {
-    #albums .album {
-        width: 50%;
+    #albums {
+        -webkit-column-count: 2;
+        -moz-column-count: 2;
+        column-count: 2;
     }
 }
 
 @media (max-width: 600px) {
-    #albums .album {
-        width: 100%;
+    #albums {
+        -webkit-column-count: 1;
+        -moz-column-count: 1;
+        column-count: 1;
     }
 }
