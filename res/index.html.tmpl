@@ -8,9 +8,9 @@
 
     <title>{{ .Config.Title }}</title>
 
-    <link rel="icon" type="image/png" href="/favicon.png"/>
+    <link rel="icon" type="image/png" href="{{ $.Config.URL }}/favicon.png"/>
 
-    <link rel="stylesheet" type="text/css" href="index.css">
+    <link rel="stylesheet" type="text/css" href="{{ $.Config.URL }}/index.css">
 
     <meta property="og:title" content="{{ .Config.Title }}"/>
     <meta property="og:type" content="website"/>
@@ -26,8 +26,8 @@
 <section id="albums">
     {{ range .Albums }}
         <div class="album">
-            <a href="{{ .Folder }}">
-                <img src="{{ getAlbumCover . }}">
+            <a href="{{ $.Config.URL }}/{{ .Folder }}">
+                <img src="{{ $.Config.URL }}/{{ getAlbumCover . }}">
             </a>
             <div class="title">{{ .Name }}</div>
         </div>
