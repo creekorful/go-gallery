@@ -10,7 +10,7 @@
 
     <link rel="icon" type="image/png" href="{{ $.Config.URL }}/favicon.png"/>
 
-    <link rel="stylesheet" type="text/css" href="{{ $.Config.URL }}/{{ $.Album.Name }}/index.css">
+    <link rel="stylesheet" type="text/css" href="{{ getStylesURL $.Config .Album }}">
 
     <!-- GLightbox -->
     <link rel="stylesheet" href="{{ $.Config.URL }}/glightbox.min.css"/>
@@ -18,8 +18,7 @@
 
     <meta property="og:title" content="{{ .Config.Title }} - {{ .Album.Name }}"/>
     <meta property="og:type" content="website"/>
-    <meta property="og:image"
-          content="{{ .Config.URL }}/{{ getAlbumCover .Album }}"/>
+    <meta property="og:image" content="{{ getAlbumCoverURL .Config .Album }}"/>
 
     <script type="text/javascript">
         document.addEventListener('DOMContentLoaded', function (event) {
@@ -31,8 +30,8 @@
 <section id="photos">
     {{ range $i, $photo := .Album.Photos }}
         <div class="item">
-            <a href="{{ $.Config.URL }}/{{ $.Album.Name }}/{{ $photo.PhotoPath }}" class="glightbox">
-                <img src="{{ $.Config.URL }}/{{ $.Album.Name }}/{{ $photo.ThumbnailPath }}"/>
+            <a href="{{ getPhotoURL $.Config $.Album $photo }}" class="glightbox">
+                <img src="{{ getPhotoThumbnailURL $.Config $.Album $photo }}"/>
             </a>
         </div>
     {{ end }}

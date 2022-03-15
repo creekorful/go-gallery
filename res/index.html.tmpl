@@ -18,16 +18,15 @@
     {{ if .Config.CoverURL }}
         <meta property="og:image" content="{{ .Config.CoverURL }}"/>
     {{ else }}
-        <meta property="og:image"
-              content="{{ .Config.URL }}/{{ getAlbumCover (index .Albums 0) }}"/>
+        <meta property="og:image" content="{{ getAlbumCoverURL .Config (index .Albums 0) }}"/>
     {{ end }}
 </head>
 <body>
 <section id="albums">
     {{ range .Albums }}
         <div class="album">
-            <a href="{{ $.Config.URL }}/{{ .Folder }}">
-                <img src="{{ $.Config.URL }}/{{ getAlbumCover . }}">
+            <a href="{{ getAlbumURL $.Config . }}">
+                <img src="{{ getAlbumCoverURL $.Config . }}">
             </a>
             <div class="title">{{ .Name }}</div>
         </div>

@@ -195,12 +195,26 @@ func executeTemplate(ctx interface{}, outputDirectory, templateName, fileName st
 	t, err := template.
 		New(templateName).
 		Funcs(map[string]interface{}{
-			"getAlbumCover": func(album album) string {
-				if album.Cover != nil {
-					return fmt.Sprintf("%s/%s", album.Folder, album.Cover.ThumbnailPath)
+			"getAlbumCoverURL": func(c config, a album) string {
+				coverPath := a.Photos[0].ThumbnailPath
+
+				if a.Cover != nil {
+					coverPath = a.Cover.ThumbnailPath
 				}
 
-				return fmt.Sprintf("%s/%s", album.Folder, album.Photos[0].ThumbnailPath)
+				return fmt.Sprintf("%s/%s/%s", c.URL, a.Folder, coverPath)
+			},
+			"getAlbumURL": func(c config, a album) string {
+				return fmt.Sprintf("%s/%s", c.URL, a.Name)
+			},
+			"getPhotoURL": func(c config, a album, p photo) string {
+				return fmt.Sprintf("%s/%s/%s", c.URL, a.Name, p.PhotoPath)
+			},
+			"getPhotoThumbnailURL": func(c config, a album, p photo) string {
+				return fmt.Sprintf("%s/%s/%s", c.URL, a.Name, p.ThumbnailPath)
+			},
+			"getStylesURL": func(c config, a album) string {
+				return fmt.Sprintf("%s/%s/index.css", c.URL, a.Name)
 			},
 		}).
 		ParseFS(resDirectory, filepath.Join("res", templateName))
