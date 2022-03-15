@@ -208,12 +208,24 @@ func executeTemplate(ctx interface{}, outputDirectory, templateName, fileName st
 				return fmt.Sprintf("%s/%s", c.URL, a.Name)
 			},
 			"getPhotoURL": func(c config, a album, p photo) string {
+				if !c.EnableAlbums {
+					return fmt.Sprintf("%s/%s", c.URL, p.PhotoPath)
+				}
+
 				return fmt.Sprintf("%s/%s/%s", c.URL, a.Name, p.PhotoPath)
 			},
 			"getPhotoThumbnailURL": func(c config, a album, p photo) string {
+				if !c.EnableAlbums {
+					return fmt.Sprintf("%s/%s", c.URL, p.ThumbnailPath)
+				}
+
 				return fmt.Sprintf("%s/%s/%s", c.URL, a.Name, p.ThumbnailPath)
 			},
 			"getStylesURL": func(c config, a album) string {
+				if !c.EnableAlbums {
+					return fmt.Sprintf("%s/index.css", c.URL)
+				}
+
 				return fmt.Sprintf("%s/%s/index.css", c.URL, a.Name)
 			},
 		}).
