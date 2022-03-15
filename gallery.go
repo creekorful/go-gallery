@@ -59,7 +59,6 @@ type config struct {
 	FontColor        string `yaml:"font_color"`
 	BorderSize       string `yaml:"border_size"`
 	ThumbnailMaxSize uint   `yaml:"thumbnail_max_size"`
-	MonthSeparator   bool   `yaml:"month_separator"`
 	EnableAlbums     bool   `yaml:"enable_albums"`
 	PhotosSorting    string `yaml:"photos_sorting"`
 }
@@ -196,21 +195,6 @@ func executeTemplate(ctx interface{}, outputDirectory, templateName, fileName st
 	t, err := template.
 		New(templateName).
 		Funcs(map[string]interface{}{
-			"isSameMonth": func(photos []photo, idx int) bool {
-				// First photo
-				if idx-1 < 0 {
-					return false
-				}
-
-				left := photos[idx-1]
-				right := photos[idx]
-
-				leftShootingDate := left.ShootingDate
-				rightShootingDate := right.ShootingDate
-
-				return leftShootingDate.Year() == rightShootingDate.Year() &&
-					leftShootingDate.Month() == rightShootingDate.Month()
-			},
 			"getAlbumCover": func(album album) string {
 				if album.Cover != nil {
 					return fmt.Sprintf("%s/%s", album.Folder, album.Cover.ThumbnailPath)

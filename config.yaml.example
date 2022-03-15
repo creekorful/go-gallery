@@ -5,5 +5,4 @@ bg_color: "#1b1c1d"
 font_color: "white"
 border_size: "3px"
 thumbnail_max_size: 760
-month_separator: true
 enable_albums: true

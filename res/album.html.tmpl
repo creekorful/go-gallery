@@ -30,14 +30,6 @@
 <body>
 <section id="photos">
     {{ range $i, $photo := .Album.Photos }}
-        {{ if $.Config.MonthSeparator }}
-            {{ if not (isSameMonth $.Album.Photos $i) }}
-                <div class="item period-separator">
-                    {{ $photo.ShootingDate.Month.String }} {{ $photo.ShootingDate.Year }}
-                </div>
-            {{ end }}
-        {{ end }}
-
         <div class="item">
             <a href="{{ $.Config.URL }}/{{ $.Album.Name }}/{{ $photo.PhotoPath }}" class="glightbox">
                 <img src="{{ $.Config.URL }}/{{ $.Album.Name }}/{{ $photo.ThumbnailPath }}"/>
